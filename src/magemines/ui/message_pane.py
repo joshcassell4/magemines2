@@ -310,44 +310,45 @@ class MessagePane:
     
     def _draw_border(self) -> None:
         """Draw the pane border."""
+        # Use ASCII characters for better compatibility
         # Corners
         self.terminal.write_char(
             Position(self.position.x, self.position.y),
-            TerminalChar('┌')
+            TerminalChar('+')
         )
         self.terminal.write_char(
             Position(self.position.x + self.width - 1, self.position.y),
-            TerminalChar('┐')
+            TerminalChar('+')
         )
         self.terminal.write_char(
             Position(self.position.x, self.position.y + self.height - 1),
-            TerminalChar('└')
+            TerminalChar('+')
         )
         self.terminal.write_char(
             Position(self.position.x + self.width - 1, self.position.y + self.height - 1),
-            TerminalChar('┘')
+            TerminalChar('+')
         )
         
         # Horizontal lines
         for x in range(self.position.x + 1, self.position.x + self.width - 1):
             self.terminal.write_char(
                 Position(x, self.position.y),
-                TerminalChar('─')
+                TerminalChar('-')
             )
             self.terminal.write_char(
                 Position(x, self.position.y + self.height - 1),
-                TerminalChar('─')
+                TerminalChar('-')
             )
         
         # Vertical lines
         for y in range(self.position.y + 1, self.position.y + self.height - 1):
             self.terminal.write_char(
                 Position(self.position.x, y),
-                TerminalChar('│')
+                TerminalChar('|')
             )
             self.terminal.write_char(
                 Position(self.position.x + self.width - 1, y),
-                TerminalChar('│')
+                TerminalChar('|')
             )
         
         # Title
@@ -374,14 +375,14 @@ class MessagePane:
         if self.scroll_offset < self._max_scroll_offset():
             self.terminal.write_char(
                 Position(self.position.x + self.width - 2, self.position.y + self.height - 2),
-                TerminalChar('▲')
+                TerminalChar('^')
             )
         
         # Can scroll down?
         if self.scroll_offset > 0:
             self.terminal.write_char(
                 Position(self.position.x + self.width - 2, self.position.y + self.height - 2),
-                TerminalChar('▼')
+                TerminalChar('v')
             )
     
     def _get_visible_messages(self) -> List[Message]:
