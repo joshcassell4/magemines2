@@ -31,15 +31,15 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
 - [x] Basic game structure exists
 - [x] Create workflow.md with TDD strategy
 - [x] Create feature_status.md
-- [ ] Set up .env file and update .gitignore
-- [ ] Add testing framework (pytest, pytest-mock, etc.)
-- [ ] Create terminal abstraction layer for testing
-- [ ] Implement event system
-- [ ] Create game state management
-- [ ] Set up CI/CD with GitHub Actions
+- [x] Set up .env file and update .gitignore
+- [x] Add testing framework (pytest, pytest-mock, etc.)
+- [x] Create terminal abstraction layer for testing
+- [x] Implement event system ⚡ **COMPLETED** (Started: 2025-07-24, Completed: 2025-07-24)
+- [x] Create game state management ⚡ **COMPLETED** (Started: 2025-07-24, Completed: 2025-07-24)
+- [ ] ~~Set up CI/CD with GitHub Actions~~ (Skipped for now)
 
 ### Phase 2: Enhanced UI with Colors
-**Status**: Not Started  
+**Status**: In Progress  
 **Target**: Week 2
 
 - [ ] Implement RGB color system using blessed
@@ -49,11 +49,11 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [ ] Monster colors (red/purple)
   - [ ] Resource colors (earth tones)
   - [ ] UI chrome colors
-- [ ] Implement scrollable message pane
-  - [ ] Message history buffer
-  - [ ] Scroll controls
-  - [ ] Message categories/filtering
-  - [ ] Color-coded messages
+- [x] Implement scrollable message pane ⚡ **COMPLETED** (Started: 2025-07-24, Completed: 2025-07-24)
+  - [x] Message history buffer
+  - [x] Scroll controls
+  - [x] Message categories/filtering
+  - [x] Color-coded messages
 - [ ] Add loading/processing indicators
   - [ ] Async operation overlay
   - [ ] Progress bars
