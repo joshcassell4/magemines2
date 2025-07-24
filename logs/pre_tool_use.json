@@ -1763,5 +1763,27 @@
         }
       ]
     }
+  },
+  {
+    "session_id": "75c8e537-cf84-41b6-af15-7b22dfbff5d9",
+    "transcript_path": "C:\\Users\\joshc\\.claude\\projects\\C--Users-joshc-magemines\\75c8e537-cf84-41b6-af15-7b22dfbff5d9.jsonl",
+    "cwd": "C:\\Users\\joshc\\magemines",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git status",
+      "description": "Check current git status"
+    }
+  },
+  {
+    "session_id": "75c8e537-cf84-41b6-af15-7b22dfbff5d9",
+    "transcript_path": "C:\\Users\\joshc\\.claude\\projects\\C--Users-joshc-magemines\\75c8e537-cf84-41b6-af15-7b22dfbff5d9.jsonl",
+    "cwd": "C:\\Users\\joshc\\magemines",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git add -A",
+      "description": "Stage all changes"
+    }
   }
 ]
