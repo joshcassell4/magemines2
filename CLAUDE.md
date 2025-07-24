@@ -76,3 +76,9 @@ The codebase is structured to easily add:
 - Map features (doors, items, terrain types) by extending the tile system
 - Game states (menus, inventory) by expanding the game loop
 - Visual effects by leveraging blessed's color and styling capabilities
+
+## Development Guidelines
+
+- **Project Status Tracking**:
+  - Update status to note starting implementation before implementing new features
+  - After feature is complete, update status again
