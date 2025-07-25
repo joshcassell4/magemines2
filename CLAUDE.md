@@ -6,6 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MageMines is a terminal-based roguelike game built with Python using the `blessed` library for terminal manipulation. The game currently features basic player movement within a map bounded by walls and includes OpenAI integration for AI-powered features.
 
+## Development Philosophy: Playtest Driven Development
+
+We're using **Playtest Driven Development (PDD)** instead of strict TDD. This approach emphasizes:
+
+1. **Build → Playtest → Iterate**: Create features, playtest them, gather feedback, then refine
+2. **Emergent Gameplay**: Allow for unexpected behaviors and "happy accidents" 
+3. **Narrative-First**: Focus on the player experience and story that emerges
+4. **Flexible Testing**: Write unit tests for concrete systems (pathfinding, collision) but allow creative features to evolve through play
+
+### Playtest Workflow
+1. Implement a feature based on the game vision
+2. Run the game and experiment with the feature
+3. Document what works, what surprises, and what needs improvement
+4. Iterate based on playtest results
+5. Write tests for stable, concrete behaviors (not emergent ones)
+
 ## Development Commands
 
 ```bash
@@ -77,8 +93,90 @@ The codebase is structured to easily add:
 - Game states (menus, inventory) by expanding the game loop
 - Visual effects by leveraging blessed's color and styling capabilities
 
+## Playtest Notes
+
+When playtesting, consider:
+- **Atmosphere**: Does the world feel mysterious and alive?
+- **Emergence**: What unexpected behaviors arise?
+- **Narrative**: What story is being told through play?
+- **Sacred Chaos**: Some unpredictability is intentional - embrace it
+
 ## Development Guidelines
 
 - **Project Status Tracking**:
   - Update status to note starting implementation before implementing new features
   - After feature is complete, update status again
+- **Playtest Documentation**:
+  - Record surprising moments
+  - Note emergent behaviors 
+  - Capture the "feel" of playing
+  - Document both bugs AND happy accidents
+
+## Game Concepts
+
+### "Whispers Beneath the Mountain"
+
+- **Genre**: ASCII turn-based world builder
+- **Core Loop**:
+  - Player navigates via arrow keys or commands
+  - Each turn advances time and causes NPCs to act
+  - The player collects materials, builds altars, and communicates with ancient beings
+- **Key Gameplay Expectations**:
+  - Actions consume time and energy
+  - Certain areas become more alive or mysterious the more time is spent there
+  - ASCII symbols evolve as the world deepens
+- **Testing Notes**:
+  - Tests should not assume deterministic output
+  - Emergence is intentional. Some chaos is sacred
+
+## Test Scenarios
+
+### Narrative Simulation Tests
+
+- Test scenario for simulating player exploration with narrative tracking
+  - Simulates a player's journey through a mystical cave environment
+  - Focuses on capturing the narrative trace of player actions
+  - Example test setup demonstrates AI-guided gameplay simulation
+  - Validates the game's ability to generate emergent storytelling experiences
+
+```python
+# Simulate this test instead:
+"""
+Test Scenario:
+1. Player wakes in cave with torch.
+2. Walks north three steps.
+3. Encounters ancient door. It should shimmer.
+4. Player knocks once. Echo should reply.
+
+Expected narrative trace: ["wake", "walk", "walk", "walk", "door", "knock", "echo"]
+"""
+
+# Let the AI generate:
+simulate_gameplay(scenario)
+```
+
+## AI Playtesting Scenarios
+
+- **Scenario: Magemines AI Playtester**
+  - You're an AI playtester in a turn-based ASCII world
+  - Every move, describe what you see, what you do, and what you expect next
+  - Game: "Magemines"
+  - Starting Scenario: You wake in a soft fog on the edge of a broken temple
+
+## Testing Best Practices
+
+- Be sure to try and do any tests through unit tests instead of scripts. This helps keep the testing in a coherent, organized place and able to work with the Makefile
+
+## Playtest Script Guidelines
+
+- Playtest scripts are ok however. Just try to keep them organized and able to be maintained.
+
+## Screen Rendering Concerns
+
+- Minimizing screen flickering in this project is a maximum concern. Please update the screen carefully and only redraw the pieces of the screen that need redrawing during any screen manipulation.
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

@@ -1,38 +1,177 @@
+import time
 from .map import GameMap
 from .player import Player
 from .input_handler import InputHandler
 from ..ui.message_pane import MessagePane, MessageCategory
-from ..core.state import GameState
-from ..core.terminal import BlessedTerminal, Position
+from ..ui.header_bar import HeaderBar
+from ..ui.loading_overlay import AsyncOperationManager, LoadingStyle
+from ..core.state import GameState, GamePhase
+from ..core.terminal import BlessedTerminal, Position, Color
 
 
 def run_game():
-    game_map = GameMap(80, 24)
-    player = Player(10, 10)
-    game_state = GameState()
-    input_handler = InputHandler()
-    
-    # Create terminal adapter
+    # Create terminal adapter first to get terminal dimensions
     terminal_adapter = BlessedTerminal()
     
-    # Create message pane at the bottom of the screen
-    message_pane = MessagePane(terminal_adapter, Position(0, 19), 80, 5)
-    input_handler.set_message_pane(message_pane)
-
     # Setup terminal
     terminal_adapter.setup()
     
     try:
+        # Get terminal dimensions
+        term_width = terminal_adapter.width
+        term_height = terminal_adapter.height
+        
+        # Define layout - header bar at top, map and message pane below
+        header_height = 1
+        map_width = min(60, term_width - 25)  # Leave space for message pane
+        map_height = min(24, term_height - header_height - 2)  # Leave space for header and margin
+        message_pane_width = min(40, term_width - map_width - 2)
+        message_pane_height = term_height - header_height - 2
+        
+        # Create header bar at the top
+        header_bar = HeaderBar(
+            terminal_adapter,
+            Position(0, 0),
+            term_width
+        )
+        
+        # Create game components with appropriate sizes
+        game_map = GameMap(map_width, map_height, y_offset=header_height)
+        player = Player(10, 10)
+        game_state = GameState()
+        game_state.phase = GamePhase.PLAYING
+        input_handler = InputHandler()
+        
+        # Create async operation manager for loading indicators
+        async_manager = AsyncOperationManager(terminal_adapter)
+        
+        # Demo tracking
+        demo_start_time = None
+        demo_progress = 0.0
+        
+        # Create message pane on the right side of the screen, below header
+        message_pane_x = map_width + 1
+        message_pane = MessagePane(
+            terminal_adapter, 
+            Position(message_pane_x, header_height), 
+            message_pane_width, 
+            message_pane_height
+        )
+        input_handler.set_message_pane(message_pane)
+        message_pane._current_turn = game_state.turn.turn_number
+        
+        # Set initial header stats
+        header_bar.set_stat("turn", "Turn", game_state.turn.turn_number, Color(255, 255, 100))
+        
+        # Clear screen and draw initial state
+        terminal_adapter.clear()
+        header_bar.render()  # Draw header first
         game_map.draw_static(terminal_adapter._term)  # Draw map once
         game_map.draw_player(terminal_adapter._term, player)
         message_pane.render()
         
         # Welcome message
-        message_pane.add_message("Welcome to MageMines! Use hjkl to move, q to quit.", MessageCategory.SYSTEM)
+        message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM)
+        message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
+        message_pane.add_message("Commands: . (wait), q (quit)", MessageCategory.SYSTEM)
+        message_pane.add_message("Messages: -/+ to scroll", MessageCategory.SYSTEM)
+        message_pane.add_message("Demo: L (spinner), P (progress), D (dots), C (cancel)", MessageCategory.SYSTEM)
 
         while True:
-            key = terminal_adapter._term.inkey()
+            # Handle demo timeout/progress
+            if async_manager.loading_overlay.active and demo_start_time:
+                elapsed = time.time() - demo_start_time
+                
+                # Auto-complete demos after timeout or progress
+                if async_manager.loading_overlay._indicator:
+                    if async_manager.loading_overlay._indicator.style == LoadingStyle.SPINNER:
+                        # Spinner demo lasts 3 seconds
+                        if elapsed > 3.0:
+                            async_manager.end_operation()
+                            message_pane.add_message("Divine energy channeled!", MessageCategory.DIVINE)
+                            demo_start_time = None
+                            # Force redraw of game elements
+                            game_map.draw_static(terminal_adapter._term)
+                            game_map.draw_player(terminal_adapter._term, player)
+                            header_bar.render()
+                            message_pane.render()
+                    elif async_manager.loading_overlay._indicator.style == LoadingStyle.DOTS:
+                        # Dots demo lasts 2 seconds
+                        if elapsed > 2.0:
+                            async_manager.end_operation()
+                            message_pane.add_message("The spirits have spoken!", MessageCategory.DIALOGUE)
+                            demo_start_time = None
+                            # Force redraw of game elements
+                            game_map.draw_static(terminal_adapter._term)
+                            game_map.draw_player(terminal_adapter._term, player)
+                            header_bar.render()
+                            message_pane.render()
+                    elif async_manager.loading_overlay._indicator.style == LoadingStyle.PROGRESS_BAR:
+                        # Progress bar advances over 4 seconds
+                        demo_progress = min(1.0, elapsed / 4.0)
+                        async_manager.update_progress(demo_progress)
+                        if demo_progress >= 1.0:
+                            async_manager.end_operation()
+                            message_pane.add_message("Ancient knowledge downloaded!", MessageCategory.SPELL)
+                            demo_start_time = None
+                            demo_progress = 0.0
+                            # Force redraw of game elements
+                            game_map.draw_static(terminal_adapter._term)
+                            game_map.draw_player(terminal_adapter._term, player)
+                            header_bar.render()
+                            message_pane.render()
             
+            # Render loading overlay if active
+            async_manager.render()
+            
+            # Get key with timeout to prevent buffer overflow
+            key = terminal_adapter._term.inkey(timeout=0.01)
+            
+            # Skip if no key pressed or input is locked
+            if not key or async_manager.input_locked:
+                continue
+                
+            # Demo: Show loading indicator for certain commands (using uppercase to avoid conflicts)
+            if str(key) == 'L' and not async_manager.loading_overlay.active:
+                # Demo loading spinner
+                async_manager.start_operation("Loading magical energies", LoadingStyle.SPINNER)
+                message_pane.add_message("Channeling divine power...", MessageCategory.DIVINE)
+                message_pane.render()  # Force message to show immediately
+                async_manager.render()  # Force overlay to render immediately
+                demo_start_time = time.time()
+                demo_progress = 0.0
+                continue
+            elif str(key) == 'P' and not async_manager.loading_overlay.active:
+                # Demo progress bar
+                async_manager.start_operation("Downloading ancient knowledge", LoadingStyle.PROGRESS_BAR)
+                message_pane.add_message("Connecting to the astral plane...", MessageCategory.SPELL)
+                message_pane.render()  # Force message to show immediately
+                async_manager.render()  # Force overlay to render immediately
+                demo_start_time = time.time()
+                demo_progress = 0.0
+                continue
+            elif str(key) == 'D' and not async_manager.loading_overlay.active:
+                # Demo dots animation
+                async_manager.start_operation("Thinking", LoadingStyle.DOTS)
+                message_pane.add_message("The spirits are contemplating...", MessageCategory.DIALOGUE)
+                message_pane.render()  # Force message to show immediately
+                async_manager.render()  # Force overlay to render immediately
+                demo_start_time = time.time()
+                demo_progress = 0.0
+                continue
+            elif str(key) == 'C' and async_manager.loading_overlay.active:
+                # Cancel/complete loading demo
+                async_manager.end_operation()
+                message_pane.add_message("Operation cancelled!", MessageCategory.SYSTEM)
+                demo_start_time = None
+                demo_progress = 0.0
+                # Force redraw of game elements
+                game_map.draw_static(terminal_adapter._term)
+                game_map.draw_player(terminal_adapter._term, player)
+                header_bar.render()
+                message_pane.render()
+                continue
+                
             game_map.clear_player(terminal_adapter._term, player)
             
             result = input_handler.process_input(key, player, game_map, game_state)
@@ -40,8 +179,20 @@ def run_game():
             if result == "QUIT":
                 break
             
+            # If an action was taken (movement, wait, etc), advance the turn
+            if result and result != "SCROLL":
+                game_state.turn.turn_number += 1
+                message_pane._current_turn = game_state.turn.turn_number
+                # Update header turn counter
+                header_bar.set_stat("turn", "Turn", game_state.turn.turn_number, Color(255, 255, 100))
+            
             game_map.draw_player(terminal_adapter._term, player)
-            message_pane.render()
+            header_bar.render()  # Render header (only redraws if changed)
+            message_pane.render()  # Render messages (only redraws if changed)
+            
+            # Clear any remaining input to prevent buffer overflow
+            while terminal_adapter._term.inkey(timeout=0):
+                pass
     finally:
         # Cleanup terminal
         terminal_adapter.cleanup()
