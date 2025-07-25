@@ -67,7 +67,9 @@ class Corridor:
         points = []
         
         # Create an L-shaped corridor
-        # First go horizontal
+        # We go from (x1,y1) to (x2,y1) then from (x2,y1) to (x2,y2)
+        
+        # Horizontal segment
         if self.x1 < self.x2:
             for x in range(self.x1, self.x2 + 1):
                 points.append((x, self.y1))
@@ -75,13 +77,14 @@ class Corridor:
             for x in range(self.x2, self.x1 + 1):
                 points.append((x, self.y1))
         
-        # Then go vertical (skip the corner point to avoid duplicate)
+        # Vertical segment (excluding the corner point which is already added)
         if self.y1 < self.y2:
             for y in range(self.y1 + 1, self.y2 + 1):
                 points.append((self.x2, y))
-        else:
-            for y in range(self.y2 - 1, self.y1, -1):
+        elif self.y1 > self.y2:
+            for y in range(self.y2, self.y1):
                 points.append((self.x2, y))
+        # If y1 == y2, no vertical segment needed
         
         return points
 
@@ -103,6 +106,11 @@ class MapGeneratorConfig:
     # Town generation parameters
     road_width: int = 3
     building_padding: int = 2
+    
+    # Corridor style parameters
+    diagonal_corridors: bool = True  # Enable diagonal corridors
+    diagonal_chance: float = 0.5     # Chance of diagonal vs L-shaped corridor
+    corridor_width: int = 1          # Width of corridors (1 for thin, 2+ for wider)
 
 
 class MapGenerator:
@@ -190,18 +198,10 @@ class DungeonGenerator(MapGenerator):
             
             if not intersects:
                 self._carve_room(new_room)
-                
-                # Connect to previous room with a corridor
-                if len(self.rooms) > 0:
-                    prev_room = self.rooms[-1]
-                    prev_cx, prev_cy = prev_room.center()
-                    new_cx, new_cy = new_room.center()
-                    
-                    corridor = Corridor(prev_cx, prev_cy, new_cx, new_cy)
-                    self._carve_corridor(corridor)
-                    self.corridors.append(corridor)
-                
                 self.rooms.append(new_room)
+        
+        # Connect all rooms using a minimum spanning tree approach
+        self._connect_rooms()
         
         # Place stairs
         if len(self.rooms) >= 2:
@@ -221,8 +221,208 @@ class DungeonGenerator(MapGenerator):
     
     def _carve_corridor(self, corridor: Corridor) -> None:
         """Carve out a corridor."""
-        for x, y in corridor.get_points():
-            self.set_tile(x, y, TileType.FLOOR)
+        if hasattr(corridor, 'points'):
+            # Custom corridor with pre-calculated points
+            for x, y in corridor.points:
+                self.set_tile(x, y, TileType.FLOOR)
+        else:
+            # Regular corridor
+            for x, y in corridor.get_points():
+                self.set_tile(x, y, TileType.FLOOR)
+    
+    def _carve_simple_corridor(self, x1: int, y1: int, x2: int, y2: int) -> None:
+        """Carve a simple L-shaped corridor between two points.
+        
+        This is a more robust implementation that ensures connectivity.
+        """
+        # Randomly choose whether to go horizontal-first or vertical-first
+        if random.random() < 0.5:
+            # Horizontal then vertical
+            # Go from x1 to x2 along y1
+            for x in range(min(x1, x2), max(x1, x2) + 1):
+                self.set_tile(x, y1, TileType.FLOOR)
+            # Go from y1 to y2 along x2
+            for y in range(min(y1, y2), max(y1, y2) + 1):
+                self.set_tile(x2, y, TileType.FLOOR)
+        else:
+            # Vertical then horizontal
+            # Go from y1 to y2 along x1
+            for y in range(min(y1, y2), max(y1, y2) + 1):
+                self.set_tile(x1, y, TileType.FLOOR)
+            # Go from x1 to x2 along y2
+            for x in range(min(x1, x2), max(x1, x2) + 1):
+                self.set_tile(x, y2, TileType.FLOOR)
+    
+    def _carve_diagonal_corridor(self, x1: int, y1: int, x2: int, y2: int) -> None:
+        """Carve a diagonal corridor between two points.
+        
+        Uses Bresenham's line algorithm to create a diagonal path.
+        """
+        # Calculate deltas
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        
+        # Determine direction
+        x_step = 1 if x1 < x2 else -1
+        y_step = 1 if y1 < y2 else -1
+        
+        # Bresenham's line algorithm
+        x, y = x1, y1
+        
+        if dx > dy:
+            # More horizontal than vertical
+            error = dx / 2
+            while x != x2:
+                self.set_tile(x, y, TileType.FLOOR)
+                # Make corridor slightly wider for better connectivity
+                if self.in_bounds(x, y - 1):
+                    self.set_tile(x, y - 1, TileType.FLOOR)
+                if self.in_bounds(x, y + 1):
+                    self.set_tile(x, y + 1, TileType.FLOOR)
+                
+                error -= dy
+                if error < 0:
+                    y += y_step
+                    error += dx
+                x += x_step
+        else:
+            # More vertical than horizontal
+            error = dy / 2
+            while y != y2:
+                self.set_tile(x, y, TileType.FLOOR)
+                # Make corridor slightly wider for better connectivity
+                if self.in_bounds(x - 1, y):
+                    self.set_tile(x - 1, y, TileType.FLOOR)
+                if self.in_bounds(x + 1, y):
+                    self.set_tile(x + 1, y, TileType.FLOOR)
+                
+                error -= dx
+                if error < 0:
+                    x += x_step
+                    error += dy
+                y += y_step
+        
+        # Ensure we reach the end point
+        self.set_tile(x2, y2, TileType.FLOOR)
+    
+    def _create_alternate_corridor(self, x1: int, y1: int, x2: int, y2: int):
+        """Create a corridor that goes vertical first, then horizontal."""
+        # Create a custom corridor object with pre-calculated points
+        corridor = Corridor(x1, y1, x2, y2)
+        corridor.points = []
+        
+        # Vertical segment first
+        if y1 < y2:
+            for y in range(y1, y2 + 1):
+                corridor.points.append((x1, y))
+        else:
+            for y in range(y2, y1 + 1):
+                corridor.points.append((x1, y))
+        
+        # Horizontal segment (excluding corner)
+        if x1 < x2:
+            for x in range(x1 + 1, x2 + 1):
+                corridor.points.append((x, y2))
+        elif x1 > x2:
+            for x in range(x2, x1):
+                corridor.points.append((x, y2))
+        
+        return corridor
+    
+    def _connect_rooms(self) -> None:
+        """Connect all rooms together ensuring no room is isolated.
+        
+        Uses a simple algorithm that:
+        1. Connects each room to at least one other room
+        2. Ensures all rooms are reachable from any other room
+        """
+        if len(self.rooms) <= 1:
+            return
+        
+        # Keep track of connected rooms
+        connected = set()
+        unconnected = set(range(len(self.rooms)))
+        
+        # Start with the first room
+        current = 0
+        connected.add(current)
+        unconnected.remove(current)
+        
+        # Connect each unconnected room to the nearest connected room
+        while unconnected:
+            # Find the closest pair of connected/unconnected rooms
+            min_dist = float('inf')
+            closest_connected = None
+            closest_unconnected = None
+            
+            for conn_idx in connected:
+                conn_room = self.rooms[conn_idx]
+                conn_cx, conn_cy = conn_room.center()
+                
+                for unconn_idx in unconnected:
+                    unconn_room = self.rooms[unconn_idx]
+                    unconn_cx, unconn_cy = unconn_room.center()
+                    
+                    # Calculate distance
+                    dist = abs(conn_cx - unconn_cx) + abs(conn_cy - unconn_cy)
+                    
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_connected = conn_idx
+                        closest_unconnected = unconn_idx
+            
+            # Connect the closest pair
+            if closest_connected is not None and closest_unconnected is not None:
+                room1 = self.rooms[closest_connected]
+                room2 = self.rooms[closest_unconnected]
+                
+                cx1, cy1 = room1.center()
+                cx2, cy2 = room2.center()
+                
+                # Choose corridor type based on configuration
+                if self.config.diagonal_corridors and random.random() < self.config.diagonal_chance:
+                    # Use diagonal corridor
+                    self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
+                else:
+                    # Use L-shaped corridor
+                    self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                
+                # Still track the corridor for statistics
+                corridor = Corridor(cx1, cy1, cx2, cy2)
+                self.corridors.append(corridor)
+                
+                # Mark as connected
+                connected.add(closest_unconnected)
+                unconnected.remove(closest_unconnected)
+        
+        # Optionally add some extra connections for more interesting layouts
+        # This creates loops and multiple paths
+        extra_connections = min(len(self.rooms) // 4, 3)  # Add up to 3 extra connections
+        for _ in range(extra_connections):
+            if len(self.rooms) < 4:
+                break
+                
+            # Pick two random rooms that aren't already directly connected
+            room1_idx = random.randint(0, len(self.rooms) - 1)
+            room2_idx = random.randint(0, len(self.rooms) - 1)
+            
+            if room1_idx != room2_idx:
+                room1 = self.rooms[room1_idx]
+                room2 = self.rooms[room2_idx]
+                
+                cx1, cy1 = room1.center()
+                cx2, cy2 = room2.center()
+                
+                # Only add if they're not too close (avoid redundant corridors)
+                dist = abs(cx1 - cx2) + abs(cy1 - cy2)
+                if dist > 15:  # Minimum distance for extra corridors
+                    # Extra corridors are more likely to be diagonal for visual interest
+                    if self.config.diagonal_corridors and random.random() < (self.config.diagonal_chance * 1.5):
+                        self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
+                    else:
+                        self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                    corridor = Corridor(cx1, cy1, cx2, cy2)
+                    self.corridors.append(corridor)
 
 
 class CaveGenerator(MapGenerator):

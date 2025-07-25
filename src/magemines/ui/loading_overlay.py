@@ -353,6 +353,7 @@ class AsyncOperationManager:
         self.loading_overlay = LoadingOverlay(terminal)
         self._input_locked = False
         self._operation_stack: List[LoadingIndicator] = []
+        self.needs_full_redraw = False  # Flag to indicate screen needs redraw
         
     @property
     def input_locked(self) -> bool:
@@ -381,6 +382,7 @@ class AsyncOperationManager:
             # No more operations, hide overlay and unlock input
             self.loading_overlay.hide()
             self._input_locked = False
+            self.needs_full_redraw = True  # Signal that screen needs redraw
         else:
             # Show previous operation
             self.loading_overlay.show(self._operation_stack[-1])

@@ -272,6 +272,13 @@ class MessagePane:
         """Scroll to newest messages."""
         self.scroll_offset = 0
     
+    def force_full_redraw(self) -> None:
+        """Force a complete redraw of the message pane."""
+        self._wrapped_cache = None
+        self._last_visible_lines = None
+        self._needs_full_redraw = True
+        self._border_drawn = False
+    
     def render(self) -> None:
         """Render the message pane."""
         # Draw border only once

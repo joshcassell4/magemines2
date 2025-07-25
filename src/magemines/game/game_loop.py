@@ -23,10 +23,22 @@ def run_game():
         
         # Define layout - header bar at top, map and message pane below
         header_height = 1
-        map_width = min(60, term_width - 25)  # Leave space for message pane
-        map_height = min(24, term_height - header_height - 2)  # Leave space for header and margin
-        message_pane_width = min(40, term_width - map_width - 2)
+        
+        # Fixed message pane width
+        message_pane_width = 40
+        message_pane_x = term_width - message_pane_width  # Flush with right side
         message_pane_height = term_height - header_height - 2
+        
+        # Calculate map area using remaining space
+        available_map_width = message_pane_x - 2  # Leave 2 chars margin between map and message pane
+        available_map_height = term_height - header_height - 2  # Available height below header
+        
+        map_width = min(80, available_map_width)  # Larger map area, up to 80 chars wide
+        map_height = min(40, available_map_height)  # Larger map area, up to 40 chars tall
+        
+        # Center the map in the available space
+        map_x_offset = (available_map_width - map_width) // 2
+        map_y_offset = header_height + ((available_map_height - map_height) // 2)
         
         # Create header bar at the top
         header_bar = HeaderBar(
@@ -36,8 +48,11 @@ def run_game():
         )
         
         # Create game components with appropriate sizes
-        game_map = GameMap(map_width, map_height, y_offset=header_height)
-        player = Player(10, 10)
+        game_map = GameMap(map_width, map_height, x_offset=map_x_offset, y_offset=map_y_offset)
+        
+        # Get starting position from the generated map
+        start_x, start_y = game_map.get_starting_position()
+        player = Player(start_x, start_y)
         game_state = GameState()
         game_state.phase = GamePhase.PLAYING
         input_handler = InputHandler()
@@ -50,7 +65,6 @@ def run_game():
         demo_progress = 0.0
         
         # Create message pane on the right side of the screen, below header
-        message_pane_x = map_width + 1
         message_pane = MessagePane(
             terminal_adapter, 
             Position(message_pane_x, header_height), 
@@ -78,6 +92,8 @@ def run_game():
         message_pane.add_message("Demo: L (spinner), P (progress), D (dots), C (cancel)", MessageCategory.SYSTEM)
 
         while True:
+            did_full_redraw = False  # Track if we did a full redraw this iteration
+            
             # Handle demo timeout/progress
             if async_manager.loading_overlay.active and demo_start_time:
                 elapsed = time.time() - demo_start_time
@@ -87,42 +103,39 @@ def run_game():
                     if async_manager.loading_overlay._indicator.style == LoadingStyle.SPINNER:
                         # Spinner demo lasts 3 seconds
                         if elapsed > 3.0:
-                            async_manager.end_operation()
                             message_pane.add_message("Divine energy channeled!", MessageCategory.DIVINE)
+                            async_manager.end_operation()
                             demo_start_time = None
-                            # Force redraw of game elements
-                            game_map.draw_static(terminal_adapter._term)
-                            game_map.draw_player(terminal_adapter._term, player)
-                            header_bar.render()
-                            message_pane.render()
                     elif async_manager.loading_overlay._indicator.style == LoadingStyle.DOTS:
                         # Dots demo lasts 2 seconds
                         if elapsed > 2.0:
-                            async_manager.end_operation()
                             message_pane.add_message("The spirits have spoken!", MessageCategory.DIALOGUE)
+                            async_manager.end_operation()
                             demo_start_time = None
-                            # Force redraw of game elements
-                            game_map.draw_static(terminal_adapter._term)
-                            game_map.draw_player(terminal_adapter._term, player)
-                            header_bar.render()
-                            message_pane.render()
                     elif async_manager.loading_overlay._indicator.style == LoadingStyle.PROGRESS_BAR:
                         # Progress bar advances over 4 seconds
                         demo_progress = min(1.0, elapsed / 4.0)
                         async_manager.update_progress(demo_progress)
                         if demo_progress >= 1.0:
-                            async_manager.end_operation()
                             message_pane.add_message("Ancient knowledge downloaded!", MessageCategory.SPELL)
+                            async_manager.end_operation()
                             demo_start_time = None
                             demo_progress = 0.0
-                            # Force redraw of game elements
-                            game_map.draw_static(terminal_adapter._term)
-                            game_map.draw_player(terminal_adapter._term, player)
-                            header_bar.render()
-                            message_pane.render()
             
             # Render loading overlay if active
             async_manager.render()
+            
+            # Check if we need to redraw the entire screen
+            if async_manager.needs_full_redraw:
+                # Clear screen and redraw everything
+                terminal_adapter.clear()
+                header_bar.render()
+                game_map.draw_static(terminal_adapter._term)
+                game_map.draw_player(terminal_adapter._term, player)
+                message_pane.force_full_redraw()  # Properly reset message pane
+                message_pane.render()
+                async_manager.needs_full_redraw = False
+                did_full_redraw = True
             
             # Get key with timeout to prevent buffer overflow
             key = terminal_adapter._term.inkey(timeout=0.01)
@@ -161,15 +174,10 @@ def run_game():
                 continue
             elif str(key) == 'C' and async_manager.loading_overlay.active:
                 # Cancel/complete loading demo
-                async_manager.end_operation()
                 message_pane.add_message("Operation cancelled!", MessageCategory.SYSTEM)
+                async_manager.end_operation()
                 demo_start_time = None
                 demo_progress = 0.0
-                # Force redraw of game elements
-                game_map.draw_static(terminal_adapter._term)
-                game_map.draw_player(terminal_adapter._term, player)
-                header_bar.render()
-                message_pane.render()
                 continue
                 
             game_map.clear_player(terminal_adapter._term, player)
@@ -186,9 +194,11 @@ def run_game():
                 # Update header turn counter
                 header_bar.set_stat("turn", "Turn", game_state.turn.turn_number, Color(255, 255, 100))
             
-            game_map.draw_player(terminal_adapter._term, player)
-            header_bar.render()  # Render header (only redraws if changed)
-            message_pane.render()  # Render messages (only redraws if changed)
+            # Only render if we didn't do a full redraw
+            if not did_full_redraw:
+                game_map.draw_player(terminal_adapter._term, player)
+                header_bar.render()  # Render header (only redraws if changed)
+                message_pane.render()  # Render messages (only redraws if changed)
             
             # Clear any remaining input to prevent buffer overflow
             while terminal_adapter._term.inkey(timeout=0):

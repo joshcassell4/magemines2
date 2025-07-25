@@ -21,14 +21,17 @@ The game currently offers a **foundational exploration experience** with the fol
    - Descriptive feedback for blocked movement
 
 3. **Map**
-   - Static 60x24 bordered map
+   - Procedural dungeon generation with rooms and corridors
+   - Multiple generation algorithms (Dungeon, Cave, Town)
    - Player represented by '@'
    - Walls represented by '#'
    - Empty space represented by '.'
+   - Stairs up/down represented by '<' and '>'
+   - Doors represented by '+' (in town maps)
+   - Altars represented by '▲' (in town centers)
 
 ### What's Missing (But Coming Soon)
 
-- No procedural generation yet (static map only)
 - No NPCs or other entities
 - No resource gathering or crafting
 - No divine powers or spells
@@ -105,6 +108,35 @@ The game currently offers a **foundational exploration experience** with the fol
 5. Document your imaginative observations
 ```
 
+### Script 5: Procedural Dungeon Exploration
+**Goal**: Experience the new procedural generation
+
+```
+1. Start the game multiple times to see different layouts
+2. Note your starting position (should be near stairs <)
+3. Explore the dungeon:
+   - Count how many rooms you find
+   - Notice how corridors connect spaces
+   - Find the down stairs (>)
+4. Test movement in tight corridors
+5. Try to find any isolated areas
+6. Notice emergent "special" rooms (dead ends feel important!)
+```
+
+### Script 6: Map Generation Variety
+**Goal**: Understand the different generation styles
+
+```
+1. Run the playtest_map_generation.py script
+2. Open map_samples directory
+3. Compare the different map types:
+   - Dungeon: Room-based with corridors
+   - Cave: Organic, flowing spaces
+   - Town: Urban layout with buildings
+4. Consider which style fits different game phases
+5. Imagine how each would feel to explore
+```
+
 ## Playtest Feedback Template
 
 When playtesting, please note:
@@ -151,9 +183,9 @@ The game is transitioning from a traditional roguelike to something more mysteri
 
 ### Current Technical Debt
 - No tests for emergent features (intentional)
-- Hard-coded map size and player start position
 - Message system could support richer formatting
 - No configuration or settings
+- Level transitions not yet implemented (stairs are visual only)
 
 ### Philosophical Considerations
 - How much should be predictable vs emergent?

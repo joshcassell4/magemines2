@@ -81,6 +81,8 @@ class TestInputHandler:
         
         # Mock the map to allow movement
         game_map.is_blocked.return_value = False
+        game_map.width = 80
+        game_map.height = 40
         player.x = 10
         player.y = 10
         
@@ -104,6 +106,10 @@ class TestInputHandler:
         message_pane = Mock()
         
         handler.set_message_pane(message_pane)
+        
+        # Set up map dimensions
+        game_map.width = 80
+        game_map.height = 40
         
         # Mock the map to block movement
         game_map.is_blocked.return_value = True
@@ -130,6 +136,8 @@ class TestInputHandler:
         game_state = Mock()
         
         game_map.is_blocked.return_value = False
+        game_map.width = 80
+        game_map.height = 40
         player.x = 10
         player.y = 10
         
@@ -240,7 +248,8 @@ class TestInputHandler:
         
         assert result is True
         assert handler.awaiting_confirmation is False
-        message_pane.add_message.assert_called_with("Quit cancelled.", "system")
+        from magemines.ui.message_pane import MessageCategory
+        message_pane.add_message.assert_called_with("Quit cancelled.", MessageCategory.SYSTEM)
         
     def test_movement_during_confirmation(self):
         """Test that movement is blocked during confirmation."""
@@ -272,6 +281,8 @@ class TestInputHandler:
         game_state = Mock()
         
         game_map.is_blocked.return_value = False
+        game_map.width = 80
+        game_map.height = 40
         player.x = 5
         player.y = 5
         

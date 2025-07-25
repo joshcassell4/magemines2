@@ -72,6 +72,10 @@ class ColorPalette:
         self.TERRAIN_DOOR = (139, 69, 19)      # Saddle brown
         self.TERRAIN_STAIRS_UP = (200, 200, 100) # Yellow-gray
         self.TERRAIN_STAIRS_DOWN = (100, 100, 200) # Blue-gray
+        self.TERRAIN_WATER = (0, 100, 200)     # Deep blue
+        self.TERRAIN_LAVA = (255, 60, 0)       # Orange-red
+        self.TERRAIN_CHEST = (139, 90, 43)     # Wood brown
+        self.TERRAIN_ALTAR = (255, 215, 0)     # Gold
         
         # Player color
         self.PLAYER = (0, 255, 0)              # Bright green
@@ -93,6 +97,10 @@ class ColorPalette:
             '+': self.TERRAIN_DOOR,
             '<': self.TERRAIN_STAIRS_UP,
             '>': self.TERRAIN_STAIRS_DOWN,
+            '~': self.TERRAIN_WATER,
+            '≈': self.TERRAIN_LAVA,  # ≈ symbol
+            '□': self.TERRAIN_CHEST,  # □ symbol
+            '▲': self.TERRAIN_ALTAR,  # ▲ symbol
         }
         
         self.resource_colors = {
