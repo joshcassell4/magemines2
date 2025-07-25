@@ -39,29 +39,40 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
 - [ ] ~~Set up CI/CD with GitHub Actions~~ (Skipped for now)
 
 ### Phase 2: Enhanced UI with Colors
-**Status**: In Progress  
-**Target**: Week 2
+**Status**: Completed  
+**Target**: Week 2  
+**Completion Date**: 2025-07-25
 
-- [ ] Implement RGB color system using blessed
-- [ ] Create color palette for game elements
-  - [ ] Mage colors (blue shades)
-  - [ ] Divine spell effects (gold/white)
-  - [ ] Monster colors (red/purple)
-  - [ ] Resource colors (earth tones)
-  - [ ] UI chrome colors
+- [x] Implement RGB color system using blessed ⚡ **COMPLETED** (Started: 2025-07-25, Completed: 2025-07-25)
+- [x] Create color palette for game elements ⚡ **COMPLETED** (2025-07-25)
+  - [x] Mage colors (blue shades)
+  - [x] Divine spell effects (gold/white)
+  - [x] Monster colors (red/purple)
+  - [x] Resource colors (earth tones)
+  - [x] UI chrome colors
 - [x] Implement scrollable message pane ⚡ **COMPLETED** (Started: 2025-07-24, Completed: 2025-07-24)
-  - [x] Message history buffer
-  - [x] Scroll controls
+  - [x] Message history buffer (1000 message limit)
+  - [x] Scroll controls (-/+ keys)
   - [x] Message categories/filtering
   - [x] Color-coded messages
-- [ ] Add loading/processing indicators
-  - [ ] Async operation overlay
-  - [ ] Progress bars
-  - [ ] Input locking during processing
-- [ ] Optimize rendering pipeline
-  - [ ] Changed tile tracking per turn
-  - [ ] Partial screen updates only
-  - [ ] Efficient turn-based rendering
+  - [x] Turn tick prefixes ([T#] for non-system messages)
+  - [x] Input buffer overflow prevention (0.01s timeout)
+  - [x] Larger message pane (8 lines) for AI dialogue
+  - [x] Side-by-side layout (map left, messages right)
+  - [x] Adaptive layout for different terminal sizes
+  - [x] Descriptive movement blocking messages
+- [x] Add loading/processing indicators ⚡ **COMPLETED** (Started: 2025-07-25, Completed: 2025-07-25)
+  - [x] Async operation overlay with multiple styles (spinner, dots, progress bar)
+  - [x] Progress bars with percentage display
+  - [x] Input locking during processing
+  - [x] Demo keys: l (spinner), p (progress), d (dots), c (cancel)
+- [x] Optimize rendering pipeline ⚡ **COMPLETED** (Started: 2025-07-25, Completed: 2025-07-25)
+  - [x] Changed tile tracking per turn
+  - [x] Partial screen updates only
+  - [x] Efficient turn-based rendering
+  - [x] Message pane caching and incremental updates
+  - [x] Header bar with stats display (turn counter)
+  - [x] Only redraw changed portions of UI
 
 ### Phase 3: Procedural World Generation
 **Status**: Not Started  
@@ -274,9 +285,16 @@ DEBUG_MODE=false
 
 ## Contributing
 
-This project uses Test-Driven Development. Please ensure:
-1. Write tests before implementing features
-2. Maintain >80% code coverage
+This project uses PlayTest-Driven Development. Please ensure:
+1. Tests are sometimes written before implementing features
+   but playtesting is more important because good playing is the most important
+   important feature.
+1.5 prefer writing unit tests to single file test scripts for code coverage.
+2. Try to maintain >80% code coverage
+2.5 Good playing is more important than good unit testing, but unit testing is important
+   for concrete things and can be managed and organized easier than other types of testing.
 3. Run performance benchmarks
 4. Update this status document
-5. Follow the TDD workflow in workflow.md
+5. Follow the TDD workflow in workflow.md if the feature warrants it, but remember good playing is the most important
+   feature so don't let tests stop you from making the game good. 
+6. Thank you in advance. You are important.

@@ -3,7 +3,7 @@
 from enum import Enum, auto
 from typing import Optional, Union
 
-from ..ui.message_pane import MessagePane, MessageCategory
+from ..ui.message_pane import MessagePane, MessageCategory, ScrollDirection
 
 
 class InputAction(Enum):
@@ -23,6 +23,11 @@ class InputAction(Enum):
     QUIT = auto()
     CONFIRM_YES = auto()
     CONFIRM_NO = auto()
+    
+    # UI
+    SCROLL_UP = auto()
+    SCROLL_DOWN = auto()
+    
     UNKNOWN = auto()
 
 
@@ -53,6 +58,11 @@ class InputHandler:
             '.': InputAction.WAIT,
             'q': InputAction.QUIT,
             'Q': InputAction.QUIT,
+            
+            # UI actions
+            '-': InputAction.SCROLL_UP,
+            '+': InputAction.SCROLL_DOWN,
+            '=': InputAction.SCROLL_DOWN,  # Allow = without shift for convenience
         }
         
         # Confirmation keys
@@ -131,6 +141,16 @@ class InputHandler:
                 )
             return True
         
+        # Handle scrolling
+        elif action == InputAction.SCROLL_UP:
+            if self._message_pane:
+                self._message_pane.scroll(ScrollDirection.UP, 1)
+            return "SCROLL"
+        elif action == InputAction.SCROLL_DOWN:
+            if self._message_pane:
+                self._message_pane.scroll(ScrollDirection.DOWN, 1)
+            return "SCROLL"
+        
         # Unknown action
         return False
     
@@ -153,10 +173,18 @@ class InputHandler:
         new_y = player.y + dy
         
         # Check if movement is blocked
+        if new_x < 0 or new_x >= game_map.width or new_y < 0 or new_y >= game_map.height:
+            if self._message_pane:
+                self._message_pane.add_message(
+                    "You can't leave the map!",
+                    MessageCategory.WARNING
+                )
+            return False
+        
         if game_map.is_blocked(new_x, new_y):
             if self._message_pane:
                 self._message_pane.add_message(
-                    "You can't move there!",
+                    "A wall blocks your path!",
                     MessageCategory.WARNING
                 )
             return False

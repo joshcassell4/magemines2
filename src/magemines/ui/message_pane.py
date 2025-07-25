@@ -66,10 +66,10 @@ class Message:
         if self.color is None:
             self.color = self.category.default_color()
     
-    def format(self, show_turn: bool = False) -> str:
+    def format(self, show_turn: bool = True) -> str:
         """Format message for display."""
-        if show_turn:
-            return f"[{self.turn}] {self.text}"
+        if show_turn and self.category != MessageCategory.SYSTEM:
+            return f"[T{self.turn}] {self.text}"
         return self.text
 
 
@@ -194,6 +194,12 @@ class MessagePane:
         self._event_bus = event_bus
         self._current_turn = 0
         
+        # Cache for wrapped messages and dirty tracking
+        self._wrapped_cache: Optional[List[Tuple[str, Color]]] = None
+        self._last_visible_lines: Optional[List[Tuple[str, Color]]] = None
+        self._needs_full_redraw = True
+        self._border_drawn = False
+        
         # Subscribe to message events if event bus provided
         if self._event_bus:
             self._event_bus.subscribe(EventType.MESSAGE, self._handle_message_event)
@@ -219,16 +225,23 @@ class MessagePane:
         if len(self.messages) > self.max_messages:
             self.messages = self.messages[-self.max_messages:]
             
-        # Reset scroll to show new message
+        # Always reset scroll to show new message
         self.scroll_offset = 0
+        
+        # Invalidate cache when new message added
+        self._wrapped_cache = None
+        self._needs_full_redraw = True
     
     def set_filter(self, filter: Optional[MessageFilter]) -> None:
         """Set message filter."""
         self._filter = filter
         self.scroll_offset = 0  # Reset scroll when filtering
+        self._wrapped_cache = None
+        self._needs_full_redraw = True
     
     def scroll(self, direction: ScrollDirection, lines: int = 1) -> None:
         """Scroll the message view."""
+        old_offset = self.scroll_offset
         if direction == ScrollDirection.UP:
             self.scroll_offset = min(
                 self.scroll_offset + lines,
@@ -236,6 +249,10 @@ class MessagePane:
             )
         else:  # DOWN
             self.scroll_offset = max(0, self.scroll_offset - lines)
+        
+        # Only trigger redraw if scroll actually changed
+        if old_offset != self.scroll_offset:
+            self._needs_full_redraw = True
     
     def page_up(self) -> None:
         """Scroll up by one page."""
@@ -257,23 +274,17 @@ class MessagePane:
     
     def render(self) -> None:
         """Render the message pane."""
-        # Draw border
-        self._draw_border()
+        # Draw border only once
+        if not self._border_drawn:
+            self._draw_border()
+            self._border_drawn = True
+            self._needs_full_redraw = True
         
-        # Get visible messages
-        visible_messages = self._get_visible_messages()
+        # Check if we need to redraw messages
+        if not self._needs_full_redraw:
+            return
         
-        # Draw messages
-        y = self.position.y + 1  # Inside border
-        wrapper = WordWrapper(self.width - 2)  # Account for border
-        
-        lines_to_draw = []
-        for msg in visible_messages:
-            wrapped_lines = wrapper.wrap(msg.format())
-            for line in wrapped_lines:
-                lines_to_draw.append((line, msg.color))
-        
-        # Apply scroll offset
+        # Get wrapped messages (uses cache if available)
         wrapped_messages = self._get_wrapped_messages()
         total_lines = len(wrapped_messages)
         visible_lines = self.height - 2
@@ -287,26 +298,40 @@ class MessagePane:
             # Show latest messages
             lines_to_show = wrapped_messages[-visible_lines:]
         
-        # Draw the lines
-        for i, (line, color) in enumerate(lines_to_show):
-            if i >= visible_lines:
-                break
+        # Only redraw if content changed
+        if lines_to_show != self._last_visible_lines:
+            # Draw the lines
+            y = self.position.y + 1  # Inside border
+            for i in range(visible_lines):
+                # Get the line content or clear if no content
+                if i < len(lines_to_show):
+                    line, color = lines_to_show[i]
+                else:
+                    line, color = "", Color.WHITE
+                
+                # Only redraw this line if it changed
+                old_line = self._last_visible_lines[i] if self._last_visible_lines and i < len(self._last_visible_lines) else ("", Color.WHITE)
+                if (line, color) != old_line:
+                    # Clear the line first
+                    for x in range(self.position.x + 1, self.position.x + self.width - 1):
+                        self.terminal.write_char(Position(x, y + i), TerminalChar(' '))
+                    
+                    # Write the text
+                    x = self.position.x + 1
+                    for char in line[:self.width - 2]:  # Ensure it fits
+                        self.terminal.write_char(
+                            Position(x, y + i),
+                            TerminalChar(char, color)
+                        )
+                        x += 1
             
-            # Clear the line first
-            for x in range(self.position.x + 1, self.position.x + self.width - 1):
-                self.terminal.write_char(Position(x, y + i), TerminalChar(' '))
-            
-            # Write the text
-            x = self.position.x + 1
-            for char in line[:self.width - 2]:  # Ensure it fits
-                self.terminal.write_char(
-                    Position(x, y + i),
-                    TerminalChar(char, color)
-                )
-                x += 1
+            self._last_visible_lines = lines_to_show
         
         # Draw scroll indicators
         self._draw_scroll_indicators()
+        
+        # Reset redraw flag
+        self._needs_full_redraw = False
     
     def _draw_border(self) -> None:
         """Draw the pane border."""
@@ -352,14 +377,14 @@ class MessagePane:
             )
         
         # Title
-        title = "Messages"
-        title_x = self.position.x + 1
+        title = " Messages "
+        title_x = self.position.x + (self.width - len(title)) // 2
         for i, char in enumerate(title):
-            if i >= self.width - 2:
+            if title_x + i >= self.position.x + self.width - 1:
                 break
             self.terminal.write_char(
                 Position(title_x + i, self.position.y),
-                TerminalChar(char)
+                TerminalChar(char, Color(255, 255, 100))  # Bright yellow for title
             )
     
     def _draw_scroll_indicators(self) -> None:
@@ -371,14 +396,14 @@ class MessagePane:
         if total_lines <= visible_lines:
             return  # No scrolling needed
         
-        # Can scroll up?
+        # Can scroll up? (older messages)
         if self.scroll_offset < self._max_scroll_offset():
             self.terminal.write_char(
-                Position(self.position.x + self.width - 2, self.position.y + self.height - 2),
+                Position(self.position.x + self.width - 2, self.position.y + 1),
                 TerminalChar('^')
             )
         
-        # Can scroll down?
+        # Can scroll down? (newer messages)
         if self.scroll_offset > 0:
             self.terminal.write_char(
                 Position(self.position.x + self.width - 2, self.position.y + self.height - 2),
@@ -396,6 +421,10 @@ class MessagePane:
     
     def _get_wrapped_messages(self) -> List[Tuple[str, Color]]:
         """Get all messages wrapped to fit width."""
+        # Use cache if available and valid
+        if self._wrapped_cache is not None:
+            return self._wrapped_cache
+        
         wrapper = WordWrapper(self.width - 2)
         wrapped = []
         
@@ -403,7 +432,9 @@ class MessagePane:
             lines = wrapper.wrap(msg.format())
             for line in lines:
                 wrapped.append((line, msg.color))
-                
+        
+        # Cache the result
+        self._wrapped_cache = wrapped
         return wrapped
     
     def _max_scroll_offset(self) -> int:
