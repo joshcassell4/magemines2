@@ -25,6 +25,7 @@ class MessageCategory(Enum):
     WARNING = auto()
     ERROR = auto()
     SYSTEM = auto()
+    INFO = auto()
     
     def default_color(self) -> Color:
         """Get default color for this category."""
@@ -38,6 +39,7 @@ class MessageCategory(Enum):
             MessageCategory.WARNING: Color(255, 165, 0),    # Orange
             MessageCategory.ERROR: Color(255, 0, 0),        # Red
             MessageCategory.SYSTEM: Color(128, 128, 128),   # Gray
+            MessageCategory.INFO: Color(150, 200, 150),     # Soft green
         }
         return colors.get(self, Color(192, 192, 192))
     

@@ -1,6 +1,6 @@
 # MageMines Feature Status
 
-Last Updated: 2025-07-24
+Last Updated: 2025-07-25
 
 ## Overview
 
@@ -75,24 +75,40 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [x] Only redraw changed portions of UI
 
 ### Phase 3: Procedural World Generation
-**Status**: In Progress  
+**Status**: Completed  
 **Target**: Weeks 3-4
 **Started**: 2025-07-25
+**Completed**: 2025-07-25
 
 - [x] Implement level generation algorithms ⚡ **COMPLETED** (2025-07-25)
   - [x] Room and corridor generation
-  - [x] Dungeon connectivity validation
+  - [x] Dungeon connectivity validation (fixed isolated room bug)
   - [x] Multiple generation themes (Dungeon, Cave, Town)
-- [ ] Multi-level dungeon system
-  - [ ] Level transitions (stairs up/down)
-  - [ ] Level persistence
-  - [ ] Depth-based difficulty
+  - [x] Diagonal corridor support with Bresenham's algorithm
+  - [x] Configurable corridor styles (L-shaped vs diagonal)
+  - [x] Minimum spanning tree connectivity guarantee
+- [x] Multi-level dungeon system ⚡ **COMPLETED** (2025-07-25)
+  - [x] Level transitions (stairs up/down with < and > keys)
+  - [x] Level persistence (levels remain when revisited)
+  - [x] Depth-based difficulty (more rooms, larger rooms, more complex layouts)
+  - [x] DungeonLevel class for level representation
+  - [x] LevelManager for multi-level coordination
+  - [x] Town on level 1, caves every 5 levels, dungeons elsewhere
+  - [x] Proper spawn positions when changing levels
+  - [x] Header bar shows current depth
+  - [x] Messages inform player about stairs
 - [ ] Resource distribution system
   - [ ] Resource types definition
   - [ ] Placement algorithms
   - [ ] Rarity tiers
-- [ ] Environmental features
-  - [ ] Doors
+- [x] Environmental features (Partially Complete)
+  - [x] Doors ⚡ **COMPLETED** (2025-07-25)
+    - [x] Door placement in dungeons (20% chance per room)
+    - [x] Door placement in towns (all buildings have doors)
+    - [x] Door opening command ('o' key)
+    - [x] Doors block movement until opened
+    - [x] Fixed door connectivity issues in town generation
+    - [x] Informative messages when bumping into doors
   - [ ] Traps
   - [ ] Special rooms (temples, libraries)
   - [ ] Destructible terrain
@@ -242,7 +258,9 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
 
 ## Known Issues
 
-- None yet (new project)
+- ~~Recursion depth error when going below certain dungeon levels~~ **FIXED** (2025-07-25)
+  - Converted recursive flood fill algorithms to iterative approach using deque
+  - Tested successfully up to level 30 and with 100x100 maps
 
 ## Future Enhancements
 

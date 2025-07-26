@@ -119,7 +119,11 @@ clean: ## Remove all generated files
 
 ## Running the Game
 run: ## Run the game
+ifeq ($(OS),Windows_NT)
+	@chcp 65001 > nul && $(UV) run python -m $(PROJECT_NAME)
+else
 	$(UV) run python -m $(PROJECT_NAME)
+endif
 
 run-debug: ## Run with debug logging
 	DEBUG_MODE=true $(UV) run python -m $(PROJECT_NAME)

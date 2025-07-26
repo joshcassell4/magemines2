@@ -26,15 +26,13 @@ We're using **Playtest Driven Development (PDD)** instead of strict TDD. This ap
 
 ```bash
 # Run the game
-python main.py
+make run
 
 # Install dependencies
-pip install -r requirements.txt
-# OR if using uv package manager:
 uv pip install -r requirements.txt
 
 # Install the project in editable mode
-pip install -e .
+uv pip install -e .
 ```
 
 ## Architecture Overview

@@ -28,6 +28,13 @@ class InputAction(Enum):
     SCROLL_UP = auto()
     SCROLL_DOWN = auto()
     
+    # Level transitions
+    GO_UP_STAIRS = auto()
+    GO_DOWN_STAIRS = auto()
+    
+    # Interactions
+    OPEN_DOOR = auto()
+    
     UNKNOWN = auto()
 
 
@@ -63,6 +70,14 @@ class InputHandler:
             '-': InputAction.SCROLL_UP,
             '+': InputAction.SCROLL_DOWN,
             '=': InputAction.SCROLL_DOWN,  # Allow = without shift for convenience
+            
+            # Level transitions
+            '<': InputAction.GO_UP_STAIRS,
+            '>': InputAction.GO_DOWN_STAIRS,
+            
+            # Interactions
+            'o': InputAction.OPEN_DOOR,
+            'O': InputAction.OPEN_DOOR,
         }
         
         # Confirmation keys
@@ -151,10 +166,20 @@ class InputHandler:
                 self._message_pane.scroll(ScrollDirection.DOWN, 1)
             return "SCROLL"
         
+        # Handle stairs
+        elif action == InputAction.GO_UP_STAIRS:
+            return self._handle_stairs(player, game_map, going_down=False)
+        elif action == InputAction.GO_DOWN_STAIRS:
+            return self._handle_stairs(player, game_map, going_down=True)
+        
+        # Handle door opening
+        elif action == InputAction.OPEN_DOOR:
+            return self._handle_open_door(player, game_map)
+        
         # Unknown action
         return False
     
-    def _handle_movement(self, action: InputAction, player, game_map) -> bool:
+    def _handle_movement(self, action: InputAction, player, game_map) -> Union[bool, str]:
         """Handle movement actions."""
         # Get movement deltas
         movement_map = {
@@ -182,15 +207,146 @@ class InputHandler:
             return False
         
         if game_map.is_blocked(new_x, new_y):
-            if self._message_pane:
-                self._message_pane.add_message(
-                    "A wall blocks your path!",
-                    MessageCategory.WARNING
-                )
+            # Check if it's a door
+            if game_map.get_tile_at(new_x, new_y) == '+':
+                if self._message_pane:
+                    self._message_pane.add_message(
+                        "A closed door blocks your path! Press 'o' to open it.",
+                        MessageCategory.WARNING
+                    )
+            else:
+                if self._message_pane:
+                    self._message_pane.add_message(
+                        "A wall blocks your path!",
+                        MessageCategory.WARNING
+                    )
             return False
         
         # Move the player
         player.move(dx, dy)
+        
+        # Check if player stepped on stairs
+        if game_map.is_stairs_down(player.x, player.y):
+            if self._message_pane:
+                if game_map.can_go_down():
+                    self._message_pane.add_message(
+                        "You see stairs leading down. Press '>' to descend.",
+                        MessageCategory.INFO
+                    )
+                else:
+                    self._message_pane.add_message(
+                        "These stairs seem to lead nowhere...",
+                        MessageCategory.INFO
+                    )
+        elif game_map.is_stairs_up(player.x, player.y):
+            if self._message_pane:
+                if game_map.can_go_up():
+                    self._message_pane.add_message(
+                        "You see stairs leading up. Press '<' to ascend.",
+                        MessageCategory.INFO
+                    )
+                else:
+                    self._message_pane.add_message(
+                        "You are at the surface level.",
+                        MessageCategory.INFO
+                    )
+        
+        return True
+    
+    def _handle_stairs(self, player, game_map, going_down: bool) -> Union[bool, str]:
+        """Handle using stairs to change levels."""
+        # Check if player is on appropriate stairs
+        if going_down and not game_map.is_stairs_down(player.x, player.y):
+            if self._message_pane:
+                self._message_pane.add_message(
+                    "You need to be on stairs going down (>) to descend.",
+                    MessageCategory.WARNING
+                )
+            return False
+        elif not going_down and not game_map.is_stairs_up(player.x, player.y):
+            if self._message_pane:
+                self._message_pane.add_message(
+                    "You need to be on stairs going up (<) to ascend.",
+                    MessageCategory.WARNING
+                )
+            return False
+        
+        # Try to change level
+        success, new_pos = game_map.change_level(going_down)
+        
+        if success:
+            # Update player position
+            player.x, player.y = new_pos
+            
+            # Add message about level change
+            if self._message_pane:
+                depth = game_map.get_current_depth()
+                if going_down:
+                    self._message_pane.add_message(
+                        f"You descend deeper into the dungeon... (Level {depth})",
+                        MessageCategory.INFO
+                    )
+                else:
+                    self._message_pane.add_message(
+                        f"You climb back towards the surface... (Level {depth})",
+                        MessageCategory.INFO
+                    )
+            
+            return "LEVEL_CHANGE"
+        else:
+            if self._message_pane:
+                if going_down:
+                    self._message_pane.add_message(
+                        "You cannot go any deeper!",
+                        MessageCategory.WARNING
+                    )
+                else:
+                    self._message_pane.add_message(
+                        "You are already at the surface!",
+                        MessageCategory.WARNING
+                    )
+            return False
+    
+    def _handle_open_door(self, player, game_map) -> Union[bool, str]:
+        """Handle opening doors."""
+        # Check all adjacent tiles for doors
+        directions = [
+            (-1, -1), (0, -1), (1, -1),  # NW, N, NE
+            (-1, 0),           (1, 0),    # W,     E
+            (-1, 1),  (0, 1),  (1, 1)     # SW, S, SE
+        ]
+        
+        doors_found = []
+        for dx, dy in directions:
+            x, y = player.x + dx, player.y + dy
+            if 0 <= x < game_map.width and 0 <= y < game_map.height:
+                if game_map.get_tile_at(x, y) == '+':
+                    doors_found.append((x, y))
+        
+        if not doors_found:
+            if self._message_pane:
+                self._message_pane.add_message(
+                    "There are no doors nearby to open.",
+                    MessageCategory.WARNING
+                )
+            return False
+        
+        # Open all adjacent doors
+        for x, y in doors_found:
+            game_map.open_door(x, y)
+            
+        if self._message_pane:
+            if len(doors_found) == 1:
+                self._message_pane.add_message(
+                    "You open the door.",
+                    MessageCategory.SYSTEM
+                )
+            else:
+                self._message_pane.add_message(
+                    f"You open {len(doors_found)} doors.",
+                    MessageCategory.SYSTEM
+                )
+        
         return True
     
     def process_input(self, key: str, player, game_map, game_state) -> Union[bool, str]:

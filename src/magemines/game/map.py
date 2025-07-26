@@ -1,9 +1,11 @@
 from magemines.ui.colors import ColorPalette
 from .map_generator import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
+from .level_manager import LevelManager
+from .dungeon_level import DungeonLevel
 
 
 class GameMap:
-    def __init__(self, width, height, x_offset=0, y_offset=0, use_procedural=True):
+    def __init__(self, width, height, x_offset=0, y_offset=0, use_procedural=True, use_levels=False):
         self.width = width
         self.height = height
         self.x_offset = x_offset  # Horizontal offset for centering
@@ -11,8 +13,14 @@ class GameMap:
         self.tiles = [['.' for _ in range(width)] for _ in range(height)]
         self.color_palette = None  # Will be set when terminal is available
         self.generator = None  # Store generator for finding positions
+        self.level_manager = None  # For multi-level dungeons
+        self.use_levels = use_levels
         
-        if use_procedural:
+        if use_levels:
+            # Initialize level manager
+            self.level_manager = LevelManager(width, height)
+            self._load_current_level()
+        elif use_procedural:
             # Generate procedural map
             self._generate_procedural_map()
         else:
@@ -110,7 +118,11 @@ class GameMap:
         Returns the position of the up stairs if using procedural generation,
         otherwise returns a default position.
         """
-        if self.generator:
+        if self.use_levels and self.level_manager:
+            # Get starting position from current level
+            level = self.level_manager.get_current_level()
+            return level.get_spawn_position(from_above=True)
+        elif self.generator:
             # Look for up stairs
             for y in range(self.height):
                 for x in range(self.width):
@@ -124,3 +136,71 @@ class GameMap:
         
         # Default position for simple maps
         return (10, 10)
+    
+    def _load_current_level(self):
+        """Load the current level from the level manager."""
+        if not self.level_manager:
+            return
+        
+        current_level = self.level_manager.get_current_level()
+        self.tiles = current_level.tiles
+        self.generator = current_level.generator
+    
+    def get_tile_at(self, x, y):
+        """Get the tile at the given position."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.tiles[y][x]
+        return '#'
+    
+    def is_stairs_up(self, x, y):
+        """Check if the position has stairs going up."""
+        return self.get_tile_at(x, y) == '<'
+    
+    def is_stairs_down(self, x, y):
+        """Check if the position has stairs going down."""
+        return self.get_tile_at(x, y) == '>'
+    
+    def get_current_depth(self):
+        """Get the current dungeon depth."""
+        if self.level_manager:
+            return self.level_manager.current_depth
+        return 1
+    
+    def can_go_up(self):
+        """Check if we can go up a level."""
+        return self.level_manager and self.level_manager.can_go_up()
+    
+    def can_go_down(self):
+        """Check if we can go down a level."""
+        return self.level_manager and self.level_manager.can_go_down()
+    
+    def change_level(self, going_down=True):
+        """Change to a different level.
+        
+        Args:
+            going_down: True to go down, False to go up
+            
+        Returns:
+            (success, new_player_position) or (False, None) if can't change
+        """
+        if not self.level_manager:
+            return False, None
+        
+        if going_down:
+            success, new_pos = self.level_manager.go_down()
+        else:
+            success, new_pos = self.level_manager.go_up()
+        
+        if success:
+            self._load_current_level()
+            return True, new_pos
+        
+        return False, None
+    
+    def open_door(self, x, y):
+        """Open a door at the given position."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            if self.tiles[y][x] == '+':
+                self.tiles[y][x] = '.'  # Convert door to floor
+                return True
+        return False
