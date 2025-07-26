@@ -48,7 +48,8 @@ def run_game():
         )
         
         # Create game components with appropriate sizes
-        game_map = GameMap(map_width, map_height, x_offset=map_x_offset, y_offset=map_y_offset)
+        # Enable multi-level dungeons
+        game_map = GameMap(map_width, map_height, x_offset=map_x_offset, y_offset=map_y_offset, use_levels=True)
         
         # Get starting position from the generated map
         start_x, start_y = game_map.get_starting_position()
@@ -76,6 +77,7 @@ def run_game():
         
         # Set initial header stats
         header_bar.set_stat("turn", "Turn", game_state.turn.turn_number, Color(255, 255, 100))
+        header_bar.set_stat("depth", "Depth", game_map.get_current_depth(), Color(100, 200, 255))
         
         # Clear screen and draw initial state
         terminal_adapter.clear()
@@ -87,9 +89,11 @@ def run_game():
         # Welcome message
         message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM)
         message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
-        message_pane.add_message("Commands: . (wait), q (quit)", MessageCategory.SYSTEM)
+        message_pane.add_message("Commands: . (wait), q (quit), o (open door)", MessageCategory.SYSTEM)
+        message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM)
         message_pane.add_message("Messages: -/+ to scroll", MessageCategory.SYSTEM)
         message_pane.add_message("Demo: L (spinner), P (progress), D (dots), C (cancel)", MessageCategory.SYSTEM)
+        message_pane.add_message(f"You are on level {game_map.get_current_depth()}", MessageCategory.INFO)
 
         while True:
             did_full_redraw = False  # Track if we did a full redraw this iteration
@@ -187,8 +191,20 @@ def run_game():
             if result == "QUIT":
                 break
             
+            # Handle level changes
+            if result == "LEVEL_CHANGE":
+                # Need to redraw the entire map
+                terminal_adapter.clear()
+                header_bar.set_stat("depth", "Depth", game_map.get_current_depth(), Color(100, 200, 255))
+                header_bar.render()
+                game_map.draw_static(terminal_adapter._term)
+                game_map.draw_player(terminal_adapter._term, player)
+                message_pane.force_full_redraw()
+                message_pane.render()
+                did_full_redraw = True
+            
             # If an action was taken (movement, wait, etc), advance the turn
-            if result and result != "SCROLL":
+            if result and result not in ["SCROLL", "LEVEL_CHANGE"]:
                 game_state.turn.turn_number += 1
                 message_pane._current_turn = game_state.turn.turn_number
                 # Update header turn counter

@@ -1,6 +1,7 @@
 """Procedural map generation system."""
 
 import random
+from collections import deque
 from enum import Enum, auto
 from typing import List, Tuple, Optional
 from dataclasses import dataclass, field
@@ -203,6 +204,13 @@ class DungeonGenerator(MapGenerator):
         # Connect all rooms using a minimum spanning tree approach
         self._connect_rooms()
         
+        # Place doors at room entrances if any rooms were marked for doors
+        if hasattr(self, '_rooms_with_doors'):
+            self._place_room_doors()
+        
+        # Verify connectivity and fix if needed
+        self._ensure_all_rooms_connected()
+        
         # Place stairs
         if len(self.rooms) >= 2:
             # Stairs up in first room
@@ -218,6 +226,13 @@ class DungeonGenerator(MapGenerator):
         for y in range(room.y + 1, room.y + room.height - 1):
             for x in range(room.x + 1, room.x + room.width - 1):
                 self.set_tile(x, y, TileType.FLOOR)
+        
+        # Optionally add doors to room entrances (20% chance per room)
+        if random.random() < 0.2:
+            # Mark this room for door placement after corridors are carved
+            if not hasattr(self, '_rooms_with_doors'):
+                self._rooms_with_doors = []
+            self._rooms_with_doors.append(room)
     
     def _carve_corridor(self, corridor: Corridor) -> None:
         """Carve out a corridor."""
@@ -235,23 +250,50 @@ class DungeonGenerator(MapGenerator):
         
         This is a more robust implementation that ensures connectivity.
         """
+        # Use corridor width from config, but ensure at least 2 for connectivity
+        corridor_width = max(2, self.config.corridor_width)
+        
         # Randomly choose whether to go horizontal-first or vertical-first
         if random.random() < 0.5:
             # Horizontal then vertical
             # Go from x1 to x2 along y1
             for x in range(min(x1, x2), max(x1, x2) + 1):
                 self.set_tile(x, y1, TileType.FLOOR)
+                # Make corridor wider
+                for dy in range(1, corridor_width):
+                    if self.in_bounds(x, y1 + dy):
+                        self.set_tile(x, y1 + dy, TileType.FLOOR)
+                    if self.in_bounds(x, y1 - dy):
+                        self.set_tile(x, y1 - dy, TileType.FLOOR)
             # Go from y1 to y2 along x2
             for y in range(min(y1, y2), max(y1, y2) + 1):
                 self.set_tile(x2, y, TileType.FLOOR)
+                # Make corridor wider
+                for dx in range(1, corridor_width):
+                    if self.in_bounds(x2 + dx, y):
+                        self.set_tile(x2 + dx, y, TileType.FLOOR)
+                    if self.in_bounds(x2 - dx, y):
+                        self.set_tile(x2 - dx, y, TileType.FLOOR)
         else:
             # Vertical then horizontal
             # Go from y1 to y2 along x1
             for y in range(min(y1, y2), max(y1, y2) + 1):
                 self.set_tile(x1, y, TileType.FLOOR)
+                # Make corridor wider
+                for dx in range(1, corridor_width):
+                    if self.in_bounds(x1 + dx, y):
+                        self.set_tile(x1 + dx, y, TileType.FLOOR)
+                    if self.in_bounds(x1 - dx, y):
+                        self.set_tile(x1 - dx, y, TileType.FLOOR)
             # Go from x1 to x2 along y2
             for x in range(min(x1, x2), max(x1, x2) + 1):
                 self.set_tile(x, y2, TileType.FLOOR)
+                # Make corridor wider
+                for dy in range(1, corridor_width):
+                    if self.in_bounds(x, y2 + dy):
+                        self.set_tile(x, y2 + dy, TileType.FLOOR)
+                    if self.in_bounds(x, y2 - dy):
+                        self.set_tile(x, y2 - dy, TileType.FLOOR)
     
     def _carve_diagonal_corridor(self, x1: int, y1: int, x2: int, y2: int) -> None:
         """Carve a diagonal corridor between two points.
@@ -423,6 +465,134 @@ class DungeonGenerator(MapGenerator):
                         self._carve_simple_corridor(cx1, cy1, cx2, cy2)
                     corridor = Corridor(cx1, cy1, cx2, cy2)
                     self.corridors.append(corridor)
+    
+    def _place_room_doors(self) -> None:
+        """Place doors at entrances to rooms marked for doors."""
+        for room in self._rooms_with_doors:
+            # Find potential door positions (where room walls meet corridors)
+            door_positions = []
+            
+            # Check room perimeter
+            for x in range(room.x, room.x + room.width):
+                for y in [room.y, room.y + room.height - 1]:  # Top and bottom walls
+                    if self._is_valid_door_position(x, y, room):
+                        door_positions.append((x, y))
+            
+            for y in range(room.y, room.y + room.height):
+                for x in [room.x, room.x + room.width - 1]:  # Left and right walls
+                    if self._is_valid_door_position(x, y, room):
+                        door_positions.append((x, y))
+            
+            # Place 1-2 doors per room
+            if door_positions:
+                num_doors = min(random.randint(1, 2), len(door_positions))
+                selected_positions = random.sample(door_positions, num_doors)
+                for x, y in selected_positions:
+                    self.set_tile(x, y, TileType.DOOR)
+    
+    def _is_valid_door_position(self, x: int, y: int, room: Room) -> bool:
+        """Check if a position is valid for a door."""
+        if not self.in_bounds(x, y):
+            return False
+        
+        # Must be on room edge
+        if not (x == room.x or x == room.x + room.width - 1 or 
+                y == room.y or y == room.y + room.height - 1):
+            return False
+        
+        # Check if there's a corridor on one side and room floor on the other
+        adjacent_floor = 0
+        adjacent_wall = 0
+        
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if self.in_bounds(nx, ny):
+                tile = self.get_tile(nx, ny)
+                if tile == TileType.FLOOR:
+                    adjacent_floor += 1
+                elif tile == TileType.WALL:
+                    adjacent_wall += 1
+        
+        # Valid door position has floor on exactly 2 sides (corridor and room)
+        return adjacent_floor == 2
+    
+    def _ensure_all_rooms_connected(self) -> None:
+        """Verify all rooms are connected and add corridors if needed."""
+        if len(self.rooms) < 2:
+            return
+        
+        # Use flood fill to find connected components
+        visited = [[False for _ in range(self.width)] for _ in range(self.height)]
+        components = []
+        
+        for room in self.rooms:
+            cx, cy = room.center()
+            if not visited[cy][cx]:
+                # Start a new component
+                component = []
+                self._flood_fill_rooms(cx, cy, visited, component)
+                components.append(component)
+        
+        # If there's more than one component, connect them
+        if len(components) > 1:
+            # Connect each component to the main component
+            main_component = components[0]
+            for i in range(1, len(components)):
+                # Find closest pair of rooms between components
+                min_dist = float('inf')
+                best_room1 = None
+                best_room2 = None
+                
+                for room_idx1 in main_component:
+                    room1 = self.rooms[room_idx1]
+                    cx1, cy1 = room1.center()
+                    
+                    for room_idx2 in components[i]:
+                        room2 = self.rooms[room_idx2]
+                        cx2, cy2 = room2.center()
+                        
+                        dist = abs(cx1 - cx2) + abs(cy1 - cy2)
+                        if dist < min_dist:
+                            min_dist = dist
+                            best_room1 = room1
+                            best_room2 = room2
+                
+                # Connect the closest rooms with a wider corridor
+                if best_room1 and best_room2:
+                    cx1, cy1 = best_room1.center()
+                    cx2, cy2 = best_room2.center()
+                    
+                    # Use simple corridor for reliability
+                    self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                    
+                    # Merge this component into main
+                    main_component.extend(components[i])
+    
+    def _flood_fill_rooms(self, start_x: int, start_y: int, visited: list, component: list) -> None:
+        """Flood fill to find connected rooms using iterative approach."""
+        queue = deque([(start_x, start_y)])
+        
+        while queue:
+            x, y = queue.popleft()
+            
+            if not self.in_bounds(x, y) or visited[y][x]:
+                continue
+            
+            if self.get_tile(x, y) not in [TileType.FLOOR, TileType.DOOR]:
+                continue
+            
+            visited[y][x] = True
+            
+            # Find which room contains this position
+            for i, room in enumerate(self.rooms):
+                if room.contains(x, y):
+                    if i not in component:
+                        component.append(i)
+                    break
+            
+            # Add adjacent positions to queue
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                queue.append((x + dx, y + dy))
 
 
 class CaveGenerator(MapGenerator):
@@ -503,20 +673,23 @@ class CaveGenerator(MapGenerator):
                     if self.get_tile(x, y) == TileType.FLOOR and (x, y) not in largest_area:
                         self.set_tile(x, y, TileType.WALL)
     
-    def _flood_fill(self, x: int, y: int, visited: List[List[bool]], 
+    def _flood_fill(self, start_x: int, start_y: int, visited: List[List[bool]], 
                      area: List[Tuple[int, int]]) -> None:
-        """Flood fill to find connected areas."""
-        if not self.in_bounds(x, y) or visited[y][x] or self.get_tile(x, y) != TileType.FLOOR:
-            return
+        """Flood fill to find connected areas using iterative approach."""
+        queue = deque([(start_x, start_y)])
         
-        visited[y][x] = True
-        area.append((x, y))
-        
-        # Check all 4 directions
-        self._flood_fill(x + 1, y, visited, area)
-        self._flood_fill(x - 1, y, visited, area)
-        self._flood_fill(x, y + 1, visited, area)
-        self._flood_fill(x, y - 1, visited, area)
+        while queue:
+            x, y = queue.popleft()
+            
+            if not self.in_bounds(x, y) or visited[y][x] or self.get_tile(x, y) != TileType.FLOOR:
+                continue
+            
+            visited[y][x] = True
+            area.append((x, y))
+            
+            # Add all 4 adjacent positions to queue
+            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                queue.append((x + dx, y + dy))
     
     def _place_stairs(self) -> None:
         """Place stairs in the cave."""
@@ -566,6 +739,14 @@ class TownGenerator(MapGenerator):
         
         # Place special features
         self._place_features()
+        
+        # Ensure map edges are walls (fix stray floor tiles)
+        for x in range(self.width):
+            self.set_tile(x, 0, TileType.WALL)
+            self.set_tile(x, self.height - 1, TileType.WALL)
+        for y in range(self.height):
+            self.set_tile(0, y, TileType.WALL)
+            self.set_tile(self.width - 1, y, TileType.WALL)
     
     def _create_roads(self) -> None:
         """Create the main roads."""
@@ -584,6 +765,17 @@ class TownGenerator(MapGenerator):
             for y in range(self.height):
                 if self.in_bounds(x, y):
                     self.set_tile(x, y, TileType.FLOOR)
+        
+        # Add perimeter road to ensure edge buildings can connect
+        # Top and bottom edges
+        for x in range(1, self.width - 1):
+            self.set_tile(x, 1, TileType.FLOOR)
+            self.set_tile(x, self.height - 2, TileType.FLOOR)
+        
+        # Left and right edges
+        for y in range(1, self.height - 1):
+            self.set_tile(1, y, TileType.FLOOR)
+            self.set_tile(self.width - 2, y, TileType.FLOOR)
     
     def _place_buildings(self) -> None:
         """Place buildings around the roads."""
@@ -661,23 +853,76 @@ class TownGenerator(MapGenerator):
             if door_placed:
                 break
             
-            for x, y in side:
-                # Check if adjacent to road
-                adjacent_positions = [
-                    (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)
-                ]
+            # Try random positions on this side
+            positions = list(side)
+            random.shuffle(positions)
+            
+            for x, y in positions:
+                # Determine which direction is "outside" based on which side we're on
+                if y == building.y:  # Top side
+                    outside_x, outside_y = x, y - 1
+                elif y == building.y + building.height - 1:  # Bottom side
+                    outside_x, outside_y = x, y + 1
+                elif x == building.x:  # Left side
+                    outside_x, outside_y = x - 1, y
+                else:  # Right side
+                    outside_x, outside_y = x + 1, y
                 
-                for ax, ay in adjacent_positions:
-                    if (self.in_bounds(ax, ay) and 
-                        self.get_tile(ax, ay) == TileType.FLOOR and
-                        not any(building.contains(ax, ay) for building in self.buildings)):
-                        # Place door
-                        self.set_tile(x, y, TileType.DOOR)
-                        door_placed = True
-                        break
-                
-                if door_placed:
+                # Check if the outside position is a road (floor) and not inside another building
+                if (self.in_bounds(outside_x, outside_y) and 
+                    self.get_tile(outside_x, outside_y) == TileType.FLOOR and
+                    not any(b.contains(outside_x, outside_y) for b in self.buildings)):
+                    # Place door
+                    self.set_tile(x, y, TileType.DOOR)
+                    door_placed = True
                     break
+        
+        # If no door was placed (building is isolated), create a path to the nearest road
+        if not door_placed:
+            # Find the closest road tile
+            min_dist = float('inf')
+            closest_road = None
+            
+            for road_y in range(self.height):
+                for road_x in range(self.width):
+                    if (self.get_tile(road_x, road_y) == TileType.FLOOR and
+                        not any(b.contains(road_x, road_y) for b in self.buildings)):
+                        # Calculate distance to building center
+                        cx, cy = building.center()
+                        dist = abs(cx - road_x) + abs(cy - road_y)
+                        if dist < min_dist:
+                            min_dist = dist
+                            closest_road = (road_x, road_y)
+            
+            if closest_road:
+                # Place door on the side closest to the road
+                cx, cy = building.center()
+                road_x, road_y = closest_road
+                
+                # Determine which side is closest
+                if abs(road_x - cx) > abs(road_y - cy):
+                    # Road is more to the left/right
+                    if road_x < cx:
+                        # Door on left side
+                        door_x = building.x
+                        door_y = building.y + building.height // 2
+                    else:
+                        # Door on right side
+                        door_x = building.x + building.width - 1
+                        door_y = building.y + building.height // 2
+                else:
+                    # Road is more above/below
+                    if road_y < cy:
+                        # Door on top side
+                        door_x = building.x + building.width // 2
+                        door_y = building.y
+                    else:
+                        # Door on bottom side
+                        door_x = building.x + building.width // 2
+                        door_y = building.y + building.height - 1
+                
+                # Place the door
+                self.set_tile(door_x, door_y, TileType.DOOR)
     
     def _place_features(self) -> None:
         """Place special features in the town."""
@@ -686,6 +931,38 @@ class TownGenerator(MapGenerator):
             center_building = self.buildings[len(self.buildings) // 2]
             cx, cy = center_building.center()
             self.set_tile(cx, cy, TileType.ALTAR)
+        
+        # Place stairs in town (different buildings if possible)
+        if len(self.buildings) >= 2:
+            # Down stairs in first building
+            first_building = self.buildings[0]
+            cx, cy = first_building.center()
+            self.set_tile(cx, cy, TileType.STAIRS_DOWN)
+            
+            # Up stairs in last building (for returning to surface/exit)
+            last_building = self.buildings[-1]
+            cx, cy = last_building.center()
+            # Don't overwrite the altar
+            if self.get_tile(cx, cy) != TileType.ALTAR:
+                self.set_tile(cx, cy, TileType.STAIRS_UP)
+            else:
+                # Find another spot in the building
+                for y in range(last_building.y + 1, last_building.y + last_building.height - 1):
+                    for x in range(last_building.x + 1, last_building.x + last_building.width - 1):
+                        if self.get_tile(x, y) == TileType.FLOOR:
+                            self.set_tile(x, y, TileType.STAIRS_UP)
+                            return
+        elif self.buildings:
+            # Only one building, place both stairs but separated
+            building = self.buildings[0]
+            # Down stairs in upper left corner area
+            self.set_tile(building.x + 1, building.y + 1, TileType.STAIRS_DOWN)
+            # Up stairs in lower right corner area
+            self.set_tile(
+                building.x + building.width - 2, 
+                building.y + building.height - 2, 
+                TileType.STAIRS_UP
+            )
 
 
 def create_generator(config: MapGeneratorConfig) -> MapGenerator:

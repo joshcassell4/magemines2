@@ -1,0 +1,175 @@
+{
+  "main": {
+    "id": "e40d9219695e6b22",
+    "type": "split",
+    "children": [
+      {
+        "id": "dd3048702e664a83",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b2ebecd391d77fa4",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "c7316254f1b83a2b",
+    "type": "split",
+    "children": [
+      {
+        "id": "ad761feb2421637c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a1076b22e69acbbf",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "aacb9091a6c7b86f",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "fc3ba5a3403ad3ac",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "2e5ada6c9a9caebe",
+    "type": "split",
+    "children": [
+      {
+        "id": "78c84c3d0770e306",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4a3f90607ef7deeb",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "playtest.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for playtest"
+            }
+          },
+          {
+            "id": "f378920effc9a751",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "playtest.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from playtest"
+            }
+          },
+          {
+            "id": "d1b1cf393f6b4af7",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "a2cf3e15936bb497",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "playtest.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of playtest"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "b2ebecd391d77fa4",
+  "lastOpenFiles": [
+    "playtest.md",
+    "tests/unit/__pycache__/test_message_scrolling.cpython-311-pytest-8.4.1.pyc",
+    "tests/unit/__pycache__/test_loading_overlay.cpython-311-pytest-8.4.1.pyc",
+    "tests/unit/__pycache__/test_game_layout.cpython-311-pytest-8.4.1.pyc",
+    "CLAUDE.md"
+  ]
+}
