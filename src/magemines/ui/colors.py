@@ -104,11 +104,13 @@ class ColorPalette:
         }
         
         self.resource_colors = {
-            'w': self.RESOURCE_WOOD,
-            's': self.RESOURCE_STONE,
-            'i': self.RESOURCE_ORE,
-            '*': self.RESOURCE_CRYSTAL,
-            '~': self.RESOURCE_ESSENCE,
+            't': self.RESOURCE_WOOD,      # tree/wood
+            '*': self.RESOURCE_STONE,      # stone
+            'o': self.RESOURCE_ORE,        # ore
+            '♦': self.RESOURCE_CRYSTAL,    # crystal
+            '◊': self.RESOURCE_ESSENCE,    # essence
+            '♠': (255, 140, 0),           # mushroom (orange)
+            '♣': (50, 205, 50),           # herbs (green)
         }
     
     def rgb(self, r: int, g: int, b: int) -> str:

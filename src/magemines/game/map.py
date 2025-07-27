@@ -1,5 +1,5 @@
 from magemines.ui.colors import ColorPalette
-from .map_generator import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
+from .map_generation import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
 from .dungeon_level import DungeonLevel
 from ..core.config import get_config, ConfigSection
@@ -67,7 +67,15 @@ class GameMap:
             TileType.LAVA: '≈',
             TileType.CHEST: '□',
             TileType.ALTAR: '▲',
-            TileType.EMPTY: '#'  # Treat empty as wall
+            TileType.EMPTY: '#',  # Treat empty as wall
+            # Resources
+            TileType.RESOURCE_WOOD: 't',
+            TileType.RESOURCE_STONE: '*',
+            TileType.RESOURCE_ORE: 'o',
+            TileType.RESOURCE_CRYSTAL: '♦',
+            TileType.RESOURCE_ESSENCE: '◊',
+            TileType.RESOURCE_MUSHROOM: '♠',
+            TileType.RESOURCE_HERBS: '♣'
         }
         
         # Copy generated tiles to our map

@@ -2,9 +2,8 @@
 
 from typing import Dict, Tuple, Optional
 from .dungeon_level import DungeonLevel
-from .map_generator import (
-    MapGeneratorConfig, DungeonGenerator, CaveGenerator, 
-    TownGenerator, GenerationMethod, TileType
+from .map_generation import (
+    MapGeneratorConfig, GenerationMethod, TileType, create_generator
 )
 from ..core.config import get_config, ConfigSection
 
@@ -44,16 +43,22 @@ class LevelManager:
         # Choose generator type based on depth
         if depth == 1:
             # First level is always a town
-            generator = TownGenerator(config)
+            config.method = GenerationMethod.TOWN
         elif depth % 5 == 0:
             # Every 5th level is a cave
-            generator = CaveGenerator(config)
+            config.method = GenerationMethod.CELLULAR_AUTOMATA
         else:
             # Regular dungeon levels
-            generator = DungeonGenerator(config)
+            config.method = GenerationMethod.ROOMS_AND_CORRIDORS
+            
+        # Create generator using factory
+        generator = create_generator(config)
         
         # Generate the level
         generator.generate()
+        
+        # Place resources on the map
+        generator.place_resources(depth)
         
         # Convert to string tiles
         tiles = self._convert_tiles(generator, depth)
@@ -121,7 +126,15 @@ class LevelManager:
             TileType.LAVA: '≈',
             TileType.CHEST: '□',
             TileType.ALTAR: '▲',
-            TileType.EMPTY: '#'
+            TileType.EMPTY: '#',
+            # Resources
+            TileType.RESOURCE_WOOD: 't',
+            TileType.RESOURCE_STONE: '*',
+            TileType.RESOURCE_ORE: 'o',
+            TileType.RESOURCE_CRYSTAL: '♦',
+            TileType.RESOURCE_ESSENCE: '◊',
+            TileType.RESOURCE_MUSHROOM: '♠',
+            TileType.RESOURCE_HERBS: '♣'
         }
         
         tiles = []

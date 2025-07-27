@@ -186,14 +186,17 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [ ] Conversation history
 
 ### Phase 7: Resources & Crafting
-**Status**: Not Started  
+**Status**: In Progress ⚡ **STARTED** (2025-07-27)
 **Target**: Week 9
 
-- [ ] Resource types
-  - [ ] Basic materials (wood, stone, ore)
-  - [ ] Magic materials (crystals, essence)
-  - [ ] Food/consumables
-- [ ] Gathering mechanics
+- [x] Resource types ⚡ **COMPLETED** (2025-07-27)
+  - [x] Basic materials (wood, stone, ore)
+  - [x] Magic materials (crystals, essence)
+  - [x] Food/consumables (mushrooms, herbs)
+- [x] Basic gathering mechanics ⚡ **COMPLETED** (2025-07-27)
+  - [x] Resource placement in map generation
+  - [x] 'g' key to gather resources
+  - [x] Resource removal from map when gathered
   - [ ] Tool requirements
   - [ ] Skill-based yields
   - [ ] Resource depletion

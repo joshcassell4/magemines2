@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, Any
-from .map_generator import MapGenerator, TileType
+from .map_generation import MapGenerator, TileType
 
 
 @dataclass
