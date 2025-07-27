@@ -3,7 +3,7 @@
 import pytest
 from magemines.game.level_manager import LevelManager
 from magemines.game.dungeon_level import DungeonLevel
-from magemines.game.map_generator import GenerationMethod, TileType
+from magemines.game.map_generation import GenerationMethod, TileType
 
 
 class TestLevelManager:

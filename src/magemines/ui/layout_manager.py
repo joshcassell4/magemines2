@@ -57,8 +57,14 @@ class LayoutManager:
         header_position = Position(0, 0)
         header_width = self.terminal_width
         
+        # Adjust message pane width if terminal is too small
+        # Leave at least 20 columns for the map area
+        min_map_area = 20
+        max_message_width = max(20, self.terminal_width - min_map_area - 2)
+        actual_message_width = min(self.message_pane_width, max_message_width)
+        
         # Message pane on the right side
-        message_pane_x = self.terminal_width - self.message_pane_width
+        message_pane_x = self.terminal_width - actual_message_width
         message_pane_y = header_height
         message_pane_height = self.terminal_height - header_height - 2
         message_position = Position(message_pane_x, message_pane_y)
@@ -67,13 +73,21 @@ class LayoutManager:
         available_map_width = message_pane_x - 2  # Leave 2 chars margin
         available_map_height = self.terminal_height - header_height - 2
         
+        # Ensure we have positive dimensions
+        available_map_width = max(1, available_map_width)
+        available_map_height = max(1, available_map_height)
+        
         # Determine actual map size
         map_width = min(self.max_map_width, available_map_width)
         map_height = min(self.max_map_height, available_map_height)
         
+        # Ensure positive map dimensions
+        map_width = max(1, map_width)
+        map_height = max(1, map_height)
+        
         # Center the map in available space
-        map_x_offset = (available_map_width - map_width) // 2
-        map_y_offset = header_height + ((available_map_height - map_height) // 2)
+        map_x_offset = max(0, (available_map_width - map_width) // 2)
+        map_y_offset = header_height + max(0, (available_map_height - map_height) // 2)
         map_position = Position(map_x_offset, map_y_offset)
         
         return LayoutDimensions(
@@ -84,7 +98,7 @@ class LayoutManager:
             map_width=map_width,
             map_height=map_height,
             message_position=message_position,
-            message_width=self.message_pane_width,
+            message_width=actual_message_width,
             message_height=message_pane_height
         )
     

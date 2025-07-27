@@ -4,7 +4,7 @@ import pytest
 from collections import deque
 from typing import Set, Tuple, List
 
-from magemines.game.map_generator import (
+from magemines.game.map_generation import (
     DungeonGenerator, 
     MapGeneratorConfig, 
     TileType,

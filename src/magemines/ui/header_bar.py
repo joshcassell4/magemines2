@@ -51,6 +51,7 @@ class HeaderBar:
         self._last_rendered: Dict[str, str] = {}
         self._needs_full_redraw = True
         self._stat_positions: Dict[str, tuple[int, int]] = {}  # key -> (start_x, value_start_x)
+        self._old_value_lengths: Dict[str, int] = {}  # key -> length of last rendered value
         
     def set_stat(self, key: str, label: str, value: Any, color: Optional[Color] = None) -> None:
         """Set or update a stat."""
@@ -156,6 +157,7 @@ class HeaderBar:
                     
             # Store positions for this stat
             self._stat_positions[key] = (stat_start_x, value_start_x)
+            self._old_value_lengths[key] = len(value_text)
                     
         self._needs_full_redraw = False
     
@@ -173,8 +175,12 @@ class HeaderBar:
         value_text = stat.format_value()
         stat_color = stat.color or Color(200, 200, 200)
         
-        # Clear the old value (assume max 10 chars for a number)
-        for i in range(10):
+        # Get the old value length to clear exactly that many characters
+        old_length = self._old_value_lengths.get(key, 0)
+        clear_length = max(old_length, len(value_text))
+        
+        # Clear the old value
+        for i in range(clear_length):
             x = value_start_x + i
             if x < self.width:
                 self.terminal.write_char(
@@ -190,3 +196,6 @@ class HeaderBar:
                     Position(self.position.x + x, self.position.y),
                     TerminalChar(char, stat_color, self.bg_color)
                 )
+        
+        # Update the stored value length
+        self._old_value_lengths[key] = len(value_text)

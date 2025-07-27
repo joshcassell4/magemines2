@@ -1,5 +1,6 @@
 """Base classes and enums for map generation system."""
 
+import logging
 from enum import Enum, auto
 from typing import Optional, Tuple
 from dataclasses import dataclass
@@ -66,13 +67,26 @@ class MapGeneratorConfig:
 class MapGenerator:
     """Base class for map generators."""
     
-    def __init__(self, config: MapGeneratorConfig):
+    def __init__(self, config: MapGeneratorConfig, message_pane=None):
         """Initialize the map generator."""
         self.config = config
         self.width = config.width
         self.height = config.height
         self.tiles = [[TileType.EMPTY for _ in range(self.width)] 
                       for _ in range(self.height)]
+        # message_pane parameter kept for compatibility but not used
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+    
+    def debug_message(self, message: str, category: Optional[str] = None) -> None:
+        """Log a debug message."""
+        if category == "warning":
+            self.logger.warning(message)
+        elif category == "error":
+            self.logger.error(message)
+        elif category == "info":
+            self.logger.info(message)
+        else:
+            self.logger.debug(message)
     
     def clear(self, tile_type: TileType) -> None:
         """Clear the map with a specific tile type."""

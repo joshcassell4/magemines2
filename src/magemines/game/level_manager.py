@@ -1,5 +1,6 @@
 """Level management system for multi-level dungeons."""
 
+import logging
 from typing import Dict, Tuple, Optional
 from .dungeon_level import DungeonLevel
 from .map_generation import (
@@ -19,14 +20,22 @@ class LevelManager:
             height: Height of each level
             max_depth: Maximum dungeon depth
         """
+        self.logger = logging.getLogger(__name__)
         self.width = width
         self.height = height
         self.max_depth = max_depth
         self.current_depth = 1
         self.levels: Dict[int, DungeonLevel] = {}
+        self.message_pane = None  # Will be set later if available
+        
+        self.logger.info(f"LevelManager initialized: {width}x{height}, max_depth={max_depth}")
         
         # Generate the first level
         self._generate_level(1)
+    
+    def set_message_pane(self, message_pane):
+        """Set the message pane for debug output."""
+        self.message_pane = message_pane
     
     def _generate_level(self, depth: int) -> DungeonLevel:
         """Generate a new dungeon level.
@@ -37,6 +46,7 @@ class LevelManager:
         Returns:
             The generated DungeonLevel
         """
+        self.logger.info(f"Generating level {depth}")
         # Create configuration with depth-based parameters
         config = self._create_config_for_depth(depth)
         
@@ -52,7 +62,7 @@ class LevelManager:
             config.method = GenerationMethod.ROOMS_AND_CORRIDORS
             
         # Create generator using factory
-        generator = create_generator(config)
+        generator = create_generator(config, self.message_pane)
         
         # Generate the level
         generator.generate()
@@ -165,6 +175,7 @@ class LevelManager:
             (success, spawn_position) - success is False if already at top
         """
         if self.current_depth <= 1:
+            self.logger.debug("Cannot go up - already at surface level")
             return False, None
         
         # Store current position on the level we're leaving
@@ -172,6 +183,7 @@ class LevelManager:
         # This would be set by the game when moving
         
         self.current_depth -= 1
+        self.logger.info(f"Moving up to level {self.current_depth}")
         new_level = self.get_current_level()
         spawn_pos = new_level.get_spawn_position(from_above=False)
         

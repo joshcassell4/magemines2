@@ -1,7 +1,7 @@
 """Unit tests for procedural map generation."""
 
 import pytest
-from magemines.game.map_generator import (
+from magemines.game.map_generation import (
     DungeonGenerator, CaveGenerator, TownGenerator, 
     MapGeneratorConfig, TileType, GenerationMethod,
     Room, Corridor, create_generator

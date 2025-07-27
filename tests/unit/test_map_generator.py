@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock
 
-from magemines.game.map_generator import (
+from magemines.game.map_generation import (
     MapGenerator, Room, Corridor, TileType,
     MapGeneratorConfig, GenerationMethod,
     DungeonGenerator, CaveGenerator, TownGenerator

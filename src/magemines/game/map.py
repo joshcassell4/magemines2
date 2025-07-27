@@ -1,3 +1,4 @@
+import logging
 from magemines.ui.colors import ColorPalette
 from .map_generation import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
@@ -7,6 +8,7 @@ from ..core.config import get_config, ConfigSection
 
 class GameMap:
     def __init__(self, width, height, x_offset=0, y_offset=0, use_procedural=True, use_levels=False):
+        self.logger = logging.getLogger(__name__)
         self.width = width
         self.height = height
         self.x_offset = x_offset  # Horizontal offset for centering
@@ -16,6 +18,9 @@ class GameMap:
         self.generator = None  # Store generator for finding positions
         self.level_manager = None  # For multi-level dungeons
         self.use_levels = use_levels
+        self.message_pane = None  # Will be set later if available
+        
+        self.logger.info(f"Creating GameMap: {width}x{height}, use_levels={use_levels}, use_procedural={use_procedural}")
         
         if use_levels:
             # Initialize level manager
@@ -27,6 +32,12 @@ class GameMap:
         else:
             # Create simple bordered map (original behavior)
             self._create_simple_map()
+    
+    def set_message_pane(self, message_pane):
+        """Set the message pane for debug output."""
+        self.message_pane = message_pane
+        # Message pane is kept for compatibility but no longer used for debug
+        # Debug messages now go to log files
     
     def _create_simple_map(self):
         """Create a simple map with walls around the border."""
@@ -40,6 +51,7 @@ class GameMap:
     
     def _generate_procedural_map(self):
         """Generate a procedural dungeon map."""
+        self.logger.info("Generating procedural map")
         # Load map generation configuration
         map_config = get_config(ConfigSection.MAP_GENERATION)
         
@@ -53,7 +65,7 @@ class GameMap:
         )
         
         # Generate the dungeon
-        self.generator = DungeonGenerator(config)
+        self.generator = DungeonGenerator(config, self.message_pane)
         self.generator.generate()
         
         # Convert TileType enum to string representation
