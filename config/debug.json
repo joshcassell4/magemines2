@@ -1,0 +1,13 @@
+{
+  "debug_mode": false,
+  "show_room_numbers": false,
+  "show_pathfinding": false,
+  "show_entity_states": false,
+  "show_tile_coordinates": false,
+  "immortal_player": false,
+  "unlimited_mana": false,
+  "reveal_all_maps": false,
+  "fast_map_generation": false,
+  "log_level": "INFO",
+  "log_file": "magemines.log"
+}

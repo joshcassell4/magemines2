@@ -1,0 +1,14 @@
+{
+  "max_entities_per_level": 100,
+  "entity_spawn_rate": 0.1,
+  "mage_base_health": 100,
+  "mage_base_mana": 50,
+  "mage_base_speed": 100,
+  "mage_vision_range": 8,
+  "mage_max_inventory": 20,
+  "monster_spawn_chance": 0.05,
+  "monster_difficulty_scaling": 0.1,
+  "monster_pack_chance": 0.2,
+  "monster_pack_size_min": 2,
+  "monster_pack_size_max": 5
+}

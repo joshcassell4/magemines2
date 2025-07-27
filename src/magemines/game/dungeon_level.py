@@ -69,14 +69,61 @@ class DungeonLevel:
         Returns:
             Spawn position (x, y)
         """
+        # First try to use stairs
+        spawn_pos = None
         if from_above and self.stairs_up_pos:
-            return self.stairs_up_pos
+            spawn_pos = self.stairs_up_pos
         elif not from_above and self.stairs_down_pos:
-            return self.stairs_down_pos
-        else:
-            # Fallback to finding any floor tile
-            for y in range(self.height):
-                for x in range(self.width):
+            spawn_pos = self.stairs_down_pos
+        
+        # Verify the spawn position is actually accessible
+        if spawn_pos:
+            x, y = spawn_pos
+            if self.tiles[y][x] in ['.', '<', '>']:
+                return spawn_pos
+        
+        # If stairs position is invalid, find the largest connected area
+        # This ensures player spawns in the main area of the map
+        from collections import deque
+        
+        # Find all connected components
+        visited = [[False for _ in range(self.width)] for _ in range(self.height)]
+        components = []
+        
+        for start_y in range(self.height):
+            for start_x in range(self.width):
+                if not visited[start_y][start_x] and self.tiles[start_y][start_x] in ['.', '<', '>']:
+                    # Flood fill to find connected component
+                    component = []
+                    queue = deque([(start_x, start_y)])
+                    
+                    while queue:
+                        x, y = queue.popleft()
+                        if visited[y][x] or not (0 <= x < self.width and 0 <= y < self.height):
+                            continue
+                        if self.tiles[y][x] not in ['.', '<', '>', '+']:
+                            continue
+                        
+                        visited[y][x] = True
+                        component.append((x, y))
+                        
+                        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                            nx, ny = x + dx, y + dy
+                            if 0 <= nx < self.width and 0 <= ny < self.height:
+                                queue.append((nx, ny))
+                    
+                    if component:
+                        components.append(component)
+        
+        # Use the largest component
+        if components:
+            largest = max(components, key=len)
+            # Return a position near the center of the largest component
+            return largest[len(largest) // 2]
+        
+        # Ultimate fallback - find any floor tile
+        for y in range(self.height):
+            for x in range(self.width):
                     if self.tiles[y][x] == '.':
                         return (x, y)
             return (1, 1)  # Last resort

@@ -1,0 +1,20 @@
+{
+  "_comment": "This file allows you to override any configuration value without modifying the base configs.",
+  "_usage": "Copy this file to 'overrides.json' and modify as needed. Values here take precedence.",
+  
+  "game": {
+    "difficulty": "hard",
+    "autosave_interval": 50
+  },
+  
+  "display": {
+    "show_fps": true,
+    "fullscreen": false
+  },
+  
+  "debug": {
+    "debug_mode": true,
+    "show_room_numbers": true,
+    "immortal_player": true
+  }
+}

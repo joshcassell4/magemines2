@@ -1,0 +1,14 @@
+{
+  "base_attack_damage": 10,
+  "base_defense": 5,
+  "critical_hit_chance": 0.05,
+  "critical_hit_multiplier": 2.0,
+  "status_effect_durations": {
+    "poisoned": 10,
+    "stunned": 2,
+    "blessed": 20,
+    "cursed": 15,
+    "burning": 5,
+    "frozen": 3
+  }
+}

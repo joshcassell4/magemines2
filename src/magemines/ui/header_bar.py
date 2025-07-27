@@ -82,9 +82,13 @@ class HeaderBar:
             self._stats.clear()
             self._needs_full_redraw = True
             
-    def render(self) -> None:
-        """Render the header bar."""
-        if not self._needs_full_redraw:
+    def render(self, force: bool = False) -> None:
+        """Render the header bar.
+        
+        Args:
+            force: If True, force a full redraw regardless of _needs_full_redraw state
+        """
+        if not self._needs_full_redraw and not force:
             return
             
         # Build the header string
@@ -154,6 +158,10 @@ class HeaderBar:
             self._stat_positions[key] = (stat_start_x, value_start_x)
                     
         self._needs_full_redraw = False
+    
+    def force_full_redraw(self) -> None:
+        """Force a full redraw on next render."""
+        self._needs_full_redraw = True
     
     def _redraw_stat_value(self, key: str) -> None:
         """Redraw only the value portion of a stat."""

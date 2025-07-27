@@ -6,6 +6,7 @@ from .map_generator import (
     MapGeneratorConfig, DungeonGenerator, CaveGenerator, 
     TownGenerator, GenerationMethod, TileType
 )
+from ..core.config import get_config, ConfigSection
 
 
 class LevelManager:
@@ -77,28 +78,31 @@ class LevelManager:
         - Larger rooms possible
         - More complex layouts
         """
-        base_rooms = 10
-        depth_bonus = depth * 2
+        # Load configuration
+        map_config = get_config(ConfigSection.MAP_GENERATION)
+        
+        # Calculate depth-based scaling
+        depth_bonus = int(depth * map_config.rooms_per_level)
         
         config = MapGeneratorConfig(
             width=self.width,
             height=self.height,
-            min_room_size=4,
-            max_room_size=min(12 + depth // 3, 20),  # Larger rooms deeper
-            max_rooms=min(base_rooms + depth_bonus, 30),  # More rooms deeper
-            diagonal_corridors=depth > 2,  # Diagonal corridors after level 2
-            diagonal_chance=min(0.3 + depth * 0.05, 0.7)  # More diagonals deeper
+            min_room_size=map_config.min_room_size,
+            max_room_size=min(map_config.max_room_size + depth // 3, 20),  # Larger rooms deeper
+            max_rooms=min(map_config.max_rooms_base + depth_bonus, 30),  # More rooms deeper
+            diagonal_corridors=depth > 2 and map_config.corridor_style in ["diagonal", "mixed"],
+            diagonal_chance=min(0.3 + depth * 0.05, 0.7) if map_config.corridor_style == "mixed" else 1.0
         )
         
         # Cave-specific parameters
-        if depth % 5 == 0:
+        if depth % map_config.cave_frequency == 0:
             config.method = GenerationMethod.CELLULAR_AUTOMATA
-            config.initial_density = 0.45 - (depth * 0.01)  # Slightly more open deeper
+            config.initial_density = map_config.cave_fill_probability - (depth * 0.01)  # Slightly more open deeper
             
         # Town-specific parameters
         elif depth == 1:
             config.method = GenerationMethod.TOWN
-            config.road_width = 3
+            config.road_width = map_config.town_street_width
             
         return config
     
