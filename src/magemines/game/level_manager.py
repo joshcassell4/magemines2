@@ -57,6 +57,9 @@ class LevelManager:
         # Generate the level
         generator.generate()
         
+        # Place resources on the map
+        generator.place_resources(depth)
+        
         # Convert to string tiles
         tiles = self._convert_tiles(generator, depth)
         
@@ -123,7 +126,15 @@ class LevelManager:
             TileType.LAVA: '≈',
             TileType.CHEST: '□',
             TileType.ALTAR: '▲',
-            TileType.EMPTY: '#'
+            TileType.EMPTY: '#',
+            # Resources
+            TileType.RESOURCE_WOOD: 't',
+            TileType.RESOURCE_STONE: '*',
+            TileType.RESOURCE_ORE: 'o',
+            TileType.RESOURCE_CRYSTAL: '♦',
+            TileType.RESOURCE_ESSENCE: '◊',
+            TileType.RESOURCE_MUSHROOM: '♠',
+            TileType.RESOURCE_HERBS: '♣'
         }
         
         tiles = []

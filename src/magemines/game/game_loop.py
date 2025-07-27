@@ -56,7 +56,7 @@ def run_game():
         
         # Get starting position from the generated map
         start_x, start_y = game_map.get_starting_position()
-        player = Player(start_x, start_y)
+        player = Player(1, start_x, start_y)  # Entity ID 1 for player
         game_state = GameState()
         game_state.phase = GamePhase.PLAYING
         input_handler = InputHandler()
@@ -157,7 +157,7 @@ def add_welcome_messages(message_pane: MessagePane, current_depth: int) -> None:
     """
     message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM)
     message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
-    message_pane.add_message("Commands: . (wait), q (quit), o (open door)", MessageCategory.SYSTEM)
+    message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather)", MessageCategory.SYSTEM)
     message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM)
     message_pane.add_message("Messages: -/+ to scroll", MessageCategory.SYSTEM)
     message_pane.add_message(f"You are on level {current_depth}", MessageCategory.INFO)

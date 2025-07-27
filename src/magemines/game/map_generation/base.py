@@ -17,6 +17,14 @@ class TileType(Enum):
     LAVA = auto()
     CHEST = auto()
     ALTAR = auto()
+    # Resources
+    RESOURCE_WOOD = auto()
+    RESOURCE_STONE = auto()
+    RESOURCE_ORE = auto()
+    RESOURCE_CRYSTAL = auto()
+    RESOURCE_ESSENCE = auto()
+    RESOURCE_MUSHROOM = auto()
+    RESOURCE_HERBS = auto()
 
 
 class GenerationMethod(Enum):
@@ -48,6 +56,11 @@ class MapGeneratorConfig:
     diagonal_corridors: bool = True  # Enable diagonal corridors
     diagonal_chance: float = 0.5     # Chance of diagonal vs L-shaped corridor
     corridor_width: int = 1          # Width of corridors (1 for thin, 2+ for wider)
+    
+    # Resource placement parameters
+    resource_density: float = 0.02   # Percentage of floor tiles that have resources
+    resource_clustering: float = 0.6  # How much resources cluster together (0-1)
+    depth_resource_bonus: float = 0.1  # Extra resources per depth level
 
 
 class MapGenerator:
@@ -98,3 +111,82 @@ class MapGenerator:
         if floor_positions:
             return random.choice(floor_positions)
         return None
+    
+    def place_resources(self, depth: int = 1) -> None:
+        """Place resources on the map based on depth and configuration."""
+        import random
+        from ...game.resources import ResourceType, RESOURCE_PROPERTIES
+        
+        # Calculate resource density based on depth
+        density = self.config.resource_density * (1 + depth * self.config.depth_resource_bonus)
+        
+        # Get all floor positions
+        floor_positions = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.tiles[y][x] == TileType.FLOOR:
+                    floor_positions.append((x, y))
+        
+        if not floor_positions:
+            return
+        
+        # Calculate number of resources to place
+        num_resources = int(len(floor_positions) * density)
+        
+        # Resource type to tile type mapping
+        resource_tile_map = {
+            ResourceType.WOOD: TileType.RESOURCE_WOOD,
+            ResourceType.STONE: TileType.RESOURCE_STONE,
+            ResourceType.ORE: TileType.RESOURCE_ORE,
+            ResourceType.CRYSTAL: TileType.RESOURCE_CRYSTAL,
+            ResourceType.ESSENCE: TileType.RESOURCE_ESSENCE,
+            ResourceType.FOOD: TileType.RESOURCE_MUSHROOM,
+            ResourceType.HERBS: TileType.RESOURCE_HERBS,
+        }
+        
+        # Place resources with clustering
+        placed_resources = []
+        for _ in range(num_resources):
+            # Select resource type based on depth and rarity
+            available_resources = []
+            for res_type, props in RESOURCE_PROPERTIES.items():
+                if res_type == ResourceType.WATER:
+                    continue  # Water is placed differently
+                
+                # Adjust rarity based on depth
+                adjusted_rarity = props.rarity * (1 - depth * 0.02)  # Rarer resources more common at depth
+                if random.random() > adjusted_rarity:
+                    available_resources.append(res_type)
+            
+            if not available_resources:
+                continue
+                
+            resource_type = random.choice(available_resources)
+            tile_type = resource_tile_map.get(resource_type)
+            
+            if not tile_type:
+                continue
+            
+            # Choose position (with clustering)
+            if placed_resources and random.random() < self.config.resource_clustering:
+                # Place near existing resource
+                base_x, base_y = random.choice(placed_resources)
+                candidates = []
+                for dx in range(-3, 4):
+                    for dy in range(-3, 4):
+                        x, y = base_x + dx, base_y + dy
+                        if (x, y) in floor_positions and self.tiles[y][x] == TileType.FLOOR:
+                            candidates.append((x, y))
+                
+                if candidates:
+                    x, y = random.choice(candidates)
+                else:
+                    x, y = random.choice(floor_positions)
+            else:
+                # Place randomly
+                x, y = random.choice(floor_positions)
+            
+            # Place the resource
+            self.tiles[y][x] = tile_type
+            placed_resources.append((x, y))
+            floor_positions.remove((x, y))

@@ -34,6 +34,7 @@ class InputAction(Enum):
     
     # Interactions
     OPEN_DOOR = auto()
+    GATHER = auto()
     
     UNKNOWN = auto()
 
@@ -78,6 +79,8 @@ class InputHandler:
             # Interactions
             'o': InputAction.OPEN_DOOR,
             'O': InputAction.OPEN_DOOR,
+            'g': InputAction.GATHER,
+            'G': InputAction.GATHER,
         }
         
         # Confirmation keys
@@ -176,6 +179,10 @@ class InputHandler:
         elif action == InputAction.OPEN_DOOR:
             return self._handle_open_door(player, game_map)
         
+        # Handle gathering
+        elif action == InputAction.GATHER:
+            return self._handle_gather(player, game_map)
+        
         # Unknown action
         return False
     
@@ -224,6 +231,26 @@ class InputHandler:
         
         # Move the player
         player.move(dx, dy)
+        
+        # Check if player stepped on a resource
+        tile = game_map.get_tile_at(player.x, player.y)
+        resource_tiles = {
+            't': "wood",
+            '*': "stone", 
+            'o': "iron ore",
+            '♦': "magic crystal",
+            '◊': "arcane essence",
+            '♠': "mushroom",
+            '♣': "healing herbs"
+        }
+        
+        if tile in resource_tiles:
+            if self._message_pane:
+                resource_name = resource_tiles[tile]
+                self._message_pane.add_message(
+                    f"You see some {resource_name} here. Press 'g' to gather it.",
+                    MessageCategory.INFO
+                )
         
         # Check if player stepped on stairs
         if game_map.is_stairs_down(player.x, player.y):
@@ -357,6 +384,47 @@ class InputHandler:
             return False
         
         return self.handle_action(action, player, game_map, game_state)
+    
+    def _handle_gather(self, player, game_map) -> Union[bool, str]:
+        """Handle gathering resources."""
+        # Get the tile the player is standing on
+        tile = game_map.get_tile_at(player.x, player.y)
+        
+        # Map of resource tiles to their names
+        resource_tiles = {
+            't': "wood",
+            '*': "stone", 
+            'o': "iron ore",
+            '♦': "magic crystal",
+            '◊': "arcane essence",
+            '♠': "mushroom",
+            '♣': "healing herbs"
+        }
+        
+        if tile not in resource_tiles:
+            if self._message_pane:
+                self._message_pane.add_message(
+                    "There's nothing here to gather.",
+                    MessageCategory.WARNING
+                )
+            return False
+        
+        # Get the resource name
+        resource_name = resource_tiles[tile]
+        
+        # For now, just pick it up instantly (later we'll add gathering time)
+        # Clear the resource from the map
+        game_map.tiles[player.y][player.x] = '.'
+        
+        if self._message_pane:
+            self._message_pane.add_message(
+                f"You gather some {resource_name}.",
+                MessageCategory.ACTION
+            )
+        
+        # TODO: Add the resource to player's inventory when inventory system is ready
+        
+        return True
 
 
 # Legacy function for compatibility

@@ -67,7 +67,15 @@ class GameMap:
             TileType.LAVA: '≈',
             TileType.CHEST: '□',
             TileType.ALTAR: '▲',
-            TileType.EMPTY: '#'  # Treat empty as wall
+            TileType.EMPTY: '#',  # Treat empty as wall
+            # Resources
+            TileType.RESOURCE_WOOD: 't',
+            TileType.RESOURCE_STONE: '*',
+            TileType.RESOURCE_ORE: 'o',
+            TileType.RESOURCE_CRYSTAL: '♦',
+            TileType.RESOURCE_ESSENCE: '◊',
+            TileType.RESOURCE_MUSHROOM: '♠',
+            TileType.RESOURCE_HERBS: '♣'
         }
         
         # Copy generated tiles to our map
