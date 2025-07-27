@@ -9,9 +9,9 @@ from .room import Room
 class TownGenerator(MapGenerator):
     """Generates town layouts."""
     
-    def __init__(self, config: MapGeneratorConfig):
+    def __init__(self, config: MapGeneratorConfig, message_pane=None):
         """Initialize the town generator."""
-        super().__init__(config)
+        super().__init__(config, message_pane)
         self.buildings: List[Room] = []
     
     def generate(self) -> None:

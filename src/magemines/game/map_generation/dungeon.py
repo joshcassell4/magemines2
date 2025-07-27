@@ -11,54 +11,91 @@ from .corridor import Corridor
 class DungeonGenerator(MapGenerator):
     """Generates dungeons using rooms and corridors."""
     
-    def __init__(self, config: MapGeneratorConfig):
+    def __init__(self, config: MapGeneratorConfig, message_pane=None):
         """Initialize the dungeon generator."""
-        super().__init__(config)
+        super().__init__(config, message_pane)
         self.rooms: List[Room] = []
         self.corridors: List[Corridor] = []
     
     def generate(self) -> None:
         """Generate a dungeon level."""
-        self.clear(TileType.WALL)
-        self.rooms = []
-        self.corridors = []
+        # Limit regeneration attempts to prevent infinite recursion
+        max_attempts = 10
+        attempt = 0
         
-        # Generate rooms
-        for _ in range(self.config.max_rooms):
-            # Random room size
-            w = random.randint(self.config.min_room_size, self.config.max_room_size)
-            h = random.randint(self.config.min_room_size, self.config.max_room_size)
+        self.debug_message("Starting dungeon generation...", "info")
+        
+        while attempt < max_attempts:
+            attempt += 1
             
-            # Random position
-            x = random.randint(1, self.width - w - 1)
-            y = random.randint(1, self.height - h - 1)
+            if attempt > 1:
+                self.debug_message(f"Generation attempt {attempt}/{max_attempts}", "warning")
             
-            new_room = Room(x, y, w, h)
+            # Clear the map
+            self.clear(TileType.WALL)
+            self.rooms = []
+            self.corridors = []
             
-            # Check if it intersects with existing rooms
-            intersects = False
-            for room in self.rooms:
-                if new_room.intersects(room):
-                    intersects = True
-                    break
+            # Clear door markers
+            if hasattr(self, '_rooms_with_doors'):
+                delattr(self, '_rooms_with_doors')
             
-            if not intersects:
-                self._carve_room(new_room)
-                self.rooms.append(new_room)
+            # Generate rooms
+            for _ in range(self.config.max_rooms):
+                # Random room size
+                w = random.randint(self.config.min_room_size, self.config.max_room_size)
+                h = random.randint(self.config.min_room_size, self.config.max_room_size)
+                
+                # Random position
+                x = random.randint(1, self.width - w - 1)
+                y = random.randint(1, self.height - h - 1)
+                
+                new_room = Room(x, y, w, h)
+                
+                # Check if it intersects with existing rooms
+                intersects = False
+                for room in self.rooms:
+                    if new_room.intersects(room):
+                        intersects = True
+                        break
+                
+                if not intersects:
+                    self._carve_room(new_room)
+                    self.rooms.append(new_room)
+            
+            self.debug_message(f"Generated {len(self.rooms)} rooms")
+            
+            # Need at least 2 rooms for a valid dungeon
+            if len(self.rooms) < 2:
+                self.debug_message("Not enough rooms generated, retrying...", "warning")
+                continue
+            
+            # Connect all rooms using a more robust approach
+            self.debug_message("Connecting rooms...")
+            self._connect_all_rooms()
+            
+            # Place doors at room entrances if any rooms were marked for doors
+            if hasattr(self, '_rooms_with_doors'):
+                self.debug_message(f"Placing doors in {len(self._rooms_with_doors)} rooms")
+                self._place_room_doors()
+            
+            # Final validation to ensure connectivity
+            self.debug_message("Validating connectivity...")
+            if self._validate_connectivity():
+                # Success! Place stairs and we're done
+                self.debug_message("Connectivity validated! Placing stairs...", "info")
+                self._place_stairs()
+                self.debug_message("Dungeon generation complete!", "info")
+                return
+            
+            # If we get here, validation failed, try again
+            self.debug_message(f"Connectivity validation failed on attempt {attempt}", "error")
+            print(f"Connectivity validation failed on attempt {attempt}, regenerating...")
         
-        # Connect all rooms using a minimum spanning tree approach
-        self._connect_rooms()
-        
-        # Place doors at room entrances if any rooms were marked for doors
-        if hasattr(self, '_rooms_with_doors'):
-            self._place_room_doors()
-        
-        # Verify connectivity and fix if needed - run twice for better results
-        self._ensure_all_rooms_connected()
-        self._ensure_all_rooms_connected()  # Second pass to catch any missed connections
-        
-        # Place stairs
-        self._place_stairs()
+        # If we've exhausted all attempts, create a simple fallback dungeon
+        self.debug_message(f"Failed after {max_attempts} attempts, using fallback", "error")
+        print(f"Failed to generate connected dungeon after {max_attempts} attempts, using fallback")
+        self._generate_simple_dungeon()
     
     def _carve_room(self, room: Room) -> None:
         """Carve out a room."""
@@ -186,13 +223,26 @@ class DungeonGenerator(MapGenerator):
         # Ensure we reach the end point
         self.set_tile(x2, y2, TileType.FLOOR)
     
-    def _connect_rooms(self) -> None:
-        """Connect all rooms together ensuring no room is isolated.
+    def _connect_all_rooms(self) -> None:
+        """Connect all rooms together using a robust algorithm that guarantees connectivity."""
+        if len(self.rooms) <= 1:
+            return
         
-        Uses a simple algorithm that:
-        1. Connects each room to at least one other room
-        2. Ensures all rooms are reachable from any other room
-        """
+        self.debug_message(f"Connecting {len(self.rooms)} rooms...")
+        
+        # First, ensure basic connectivity using minimum spanning tree
+        self._connect_rooms_mst()
+        
+        # Then add some extra connections for more interesting layouts
+        self._add_extra_connections()
+        
+        # Finally, verify and fix any remaining connectivity issues
+        self._ensure_full_connectivity()
+        
+        self.debug_message("Room connection complete")
+    
+    def _connect_rooms_mst(self) -> None:
+        """Connect rooms using a minimum spanning tree approach."""
         if len(self.rooms) <= 1:
             return
         
@@ -233,33 +283,22 @@ class DungeonGenerator(MapGenerator):
                 room1 = self.rooms[closest_connected]
                 room2 = self.rooms[closest_unconnected]
                 
-                cx1, cy1 = room1.center()
-                cx2, cy2 = room2.center()
-                
-                # Choose corridor type based on configuration
-                if self.config.diagonal_corridors and random.random() < self.config.diagonal_chance:
-                    # Use diagonal corridor
-                    self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
-                else:
-                    # Use L-shaped corridor
-                    self._carve_simple_corridor(cx1, cy1, cx2, cy2)
-                
-                # Still track the corridor for statistics
-                corridor = Corridor(cx1, cy1, cx2, cy2)
-                self.corridors.append(corridor)
+                # Carve corridor with extra reliability
+                self._carve_reliable_corridor(room1, room2)
                 
                 # Mark as connected
                 connected.add(closest_unconnected)
                 unconnected.remove(closest_unconnected)
-        
-        # Optionally add some extra connections for more interesting layouts
-        # This creates loops and multiple paths
+    
+    def _add_extra_connections(self) -> None:
+        """Add extra connections between rooms for more interesting layouts."""
         extra_connections = min(len(self.rooms) // 4, 3)  # Add up to 3 extra connections
+        
         for _ in range(extra_connections):
             if len(self.rooms) < 4:
                 break
                 
-            # Pick two random rooms that aren't already directly connected
+            # Pick two random rooms
             room1_idx = random.randint(0, len(self.rooms) - 1)
             room2_idx = random.randint(0, len(self.rooms) - 1)
             
@@ -270,40 +309,270 @@ class DungeonGenerator(MapGenerator):
                 cx1, cy1 = room1.center()
                 cx2, cy2 = room2.center()
                 
-                # Only add if they're not too close (avoid redundant corridors)
+                # Only add if they're not too close
                 dist = abs(cx1 - cx2) + abs(cy1 - cy2)
-                if dist > 15:  # Minimum distance for extra corridors
-                    # Extra corridors are more likely to be diagonal for visual interest
-                    if self.config.diagonal_corridors and random.random() < (self.config.diagonal_chance * 1.5):
-                        self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
-                    else:
-                        self._carve_simple_corridor(cx1, cy1, cx2, cy2)
-                    corridor = Corridor(cx1, cy1, cx2, cy2)
-                    self.corridors.append(corridor)
+                if dist > 15:
+                    self._carve_reliable_corridor(room1, room2)
+    
+    def _carve_reliable_corridor(self, room1: Room, room2: Room) -> None:
+        """Carve a corridor between two rooms with extra reliability."""
+        cx1, cy1 = room1.center()
+        cx2, cy2 = room2.center()
+        
+        self.debug_message(f"Carving corridor from room at ({cx1},{cy1}) to room at ({cx2},{cy2})")
+        
+        # Use wider corridors temporarily for better connectivity
+        old_width = self.config.corridor_width
+        self.config.corridor_width = 2
+        
+        # Main corridor from center to center
+        if self.config.diagonal_corridors and random.random() < self.config.diagonal_chance:
+            self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
+        else:
+            self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+        
+        # CRITICAL FIX: Ensure we connect directly to room floors
+        # Carve from room floor to corridor to guarantee connection
+        
+        # Find a floor tile in room1
+        room1_floor = None
+        for y in range(room1.y + 1, room1.y + room1.height - 1):
+            for x in range(room1.x + 1, room1.x + room1.width - 1):
+                if self.get_tile(x, y) == TileType.FLOOR:
+                    room1_floor = (x, y)
+                    break
+            if room1_floor:
+                break
+        
+        # Find a floor tile in room2
+        room2_floor = None
+        for y in range(room2.y + 1, room2.y + room2.height - 1):
+            for x in range(room2.x + 1, room2.x + room2.width - 1):
+                if self.get_tile(x, y) == TileType.FLOOR:
+                    room2_floor = (x, y)
+                    break
+            if room2_floor:
+                break
+        
+        # Carve paths from room floors to their centers to ensure connectivity
+        if room1_floor:
+            self._carve_simple_corridor(room1_floor[0], room1_floor[1], cx1, cy1)
+        if room2_floor:
+            self._carve_simple_corridor(room2_floor[0], room2_floor[1], cx2, cy2)
+        
+        self.config.corridor_width = old_width
+        
+        # Track the corridor
+        corridor = Corridor(cx1, cy1, cx2, cy2)
+        self.corridors.append(corridor)
+    
+    def _ensure_full_connectivity(self) -> None:
+        """Ensure all rooms are fully connected by checking with flood fill."""
+        # Find all connected components
+        components = self._find_connected_components()
+        
+        if len(components) <= 1:
+            self.debug_message("All rooms already connected")
+            return
+            
+        self.debug_message(f"Found {len(components)} disconnected components, connecting them...")
+        
+        # If there's more than one component, connect them
+        attempts = 0
+        max_attempts = 10
+        while len(components) > 1 and attempts < max_attempts:
+            attempts += 1
+            self.debug_message(f"Connection attempt {attempts}: {len(components)} components remain")
+            
+            # Connect the first two components
+            comp1 = components[0]
+            comp2 = components[1]
+            
+            # Find closest rooms between components
+            min_dist = float('inf')
+            best_room1_idx = None
+            best_room2_idx = None
+            
+            for room1_idx in comp1:
+                room1 = self.rooms[room1_idx]
+                cx1, cy1 = room1.center()
+                
+                for room2_idx in comp2:
+                    room2 = self.rooms[room2_idx]
+                    cx2, cy2 = room2.center()
+                    
+                    dist = abs(cx1 - cx2) + abs(cy1 - cy2)
+                    if dist < min_dist:
+                        min_dist = dist
+                        best_room1_idx = room1_idx
+                        best_room2_idx = room2_idx
+            
+            # Connect the closest rooms
+            if best_room1_idx is not None and best_room2_idx is not None:
+                self.debug_message(f"Connecting component {0} to component {1}")
+                self._carve_reliable_corridor(
+                    self.rooms[best_room1_idx],
+                    self.rooms[best_room2_idx]
+                )
+            else:
+                self.debug_message("ERROR: Could not find rooms to connect!", "error")
+                break
+            
+            # Recalculate components
+            components = self._find_connected_components()
+        
+        if len(components) > 1:
+            self.debug_message(f"WARNING: Still have {len(components)} disconnected components after {attempts} attempts", "warning")
+    
+    def _find_connected_components(self) -> List[List[int]]:
+        """Find all connected components of rooms."""
+        visited_rooms = set()
+        components = []
+        
+        for i, room in enumerate(self.rooms):
+            if i not in visited_rooms:
+                # Start a new component
+                component = []
+                self._find_component_rooms(i, visited_rooms, component)
+                if component:
+                    components.append(component)
+        
+        return components
+    
+    def _find_component_rooms(self, room_idx: int, visited: set, component: list) -> None:
+        """Find all rooms connected to the given room using flood fill."""
+        if room_idx in visited:
+            return
+        
+        visited.add(room_idx)
+        component.append(room_idx)
+        
+        room = self.rooms[room_idx]
+        cx, cy = room.center()
+        
+        # Check if this room is connected to other rooms via floor tiles
+        visited_tiles = set()
+        reachable_rooms = set()
+        self._flood_fill_from_room(cx, cy, visited_tiles, reachable_rooms)
+        
+        # Recursively visit connected rooms
+        for other_idx in reachable_rooms:
+            if other_idx != room_idx and other_idx not in visited:
+                self._find_component_rooms(other_idx, visited, component)
+    
+    def _flood_fill_from_room(self, start_x: int, start_y: int, visited_tiles: set, reachable_rooms: set) -> None:
+        """Flood fill from a starting position to find reachable rooms."""
+        queue = deque([(start_x, start_y)])
+        
+        while queue:
+            x, y = queue.popleft()
+            
+            if (x, y) in visited_tiles or not self.in_bounds(x, y):
+                continue
+            
+            if self.get_tile(x, y) not in [TileType.FLOOR, TileType.DOOR]:
+                continue
+            
+            visited_tiles.add((x, y))
+            
+            # Check which room this tile belongs to
+            for i, room in enumerate(self.rooms):
+                if room.contains(x, y):
+                    reachable_rooms.add(i)
+                    break
+            
+            # Add adjacent tiles
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                queue.append((x + dx, y + dy))
+    
+    def _validate_connectivity(self) -> bool:
+        """Validate that all rooms are connected."""
+        if len(self.rooms) <= 1:
+            return True
+        
+        components = self._find_connected_components()
+        
+        # Debug: log component information
+        if len(components) > 1:
+            self.debug_message(f"Found {len(components)} disconnected components!", "error")
+            for i, comp in enumerate(components):
+                self.debug_message(f"  Component {i}: {len(comp)} rooms", "error")
+                # Show which rooms are in this component
+                room_info = []
+                for room_idx in comp[:3]:  # Show first 3 rooms
+                    if room_idx < len(self.rooms):
+                        room = self.rooms[room_idx]
+                        cx, cy = room.center()
+                        room_info.append(f"Room at ({cx},{cy})")
+                if len(comp) > 3:
+                    room_info.append(f"... and {len(comp)-3} more")
+                self.debug_message(f"    {', '.join(room_info)}", "error")
+            print(f"WARNING: Found {len(components)} disconnected components!")
+            for i, comp in enumerate(components):
+                print(f"  Component {i}: {len(comp)} rooms")
+        else:
+            self.debug_message(f"All {len(self.rooms)} rooms are connected!")
+        
+        return len(components) == 1
     
     def _place_room_doors(self) -> None:
         """Place doors at entrances to rooms marked for doors."""
         for room in self._rooms_with_doors:
-            # Find potential door positions (where room walls meet corridors)
-            door_positions = []
+            # Find all corridor entry points to this room
+            entry_points = []
             
-            # Check room perimeter
+            # Check room perimeter for corridor connections
             for x in range(room.x, room.x + room.width):
                 for y in [room.y, room.y + room.height - 1]:  # Top and bottom walls
-                    if self._is_valid_door_position(x, y, room):
-                        door_positions.append((x, y))
+                    if self._is_corridor_entry(x, y, room):
+                        entry_points.append((x, y))
             
             for y in range(room.y, room.y + room.height):
                 for x in [room.x, room.x + room.width - 1]:  # Left and right walls
+                    if self._is_corridor_entry(x, y, room):
+                        entry_points.append((x, y))
+            
+            # Only place doors if room has at least 2 connections
+            # This prevents trapping players in dead-end rooms
+            if len(entry_points) >= 2:
+                # Find valid door positions from entry points
+                door_positions = []
+                for x, y in entry_points:
                     if self._is_valid_door_position(x, y, room):
                         door_positions.append((x, y))
-            
-            # Place 1-2 doors per room
-            if door_positions:
-                num_doors = min(random.randint(1, 2), len(door_positions))
-                selected_positions = random.sample(door_positions, num_doors)
-                for x, y in selected_positions:
-                    self.set_tile(x, y, TileType.DOOR)
+                
+                if door_positions:
+                    # Place 1-2 doors, but ensure at least one door if room has 2+ connections
+                    num_doors = min(random.randint(1, 2), len(door_positions))
+                    selected_positions = random.sample(door_positions, num_doors)
+                    for x, y in selected_positions:
+                        self.set_tile(x, y, TileType.DOOR)
+    
+    def _is_corridor_entry(self, x: int, y: int, room: Room) -> bool:
+        """Check if a position is where a corridor enters the room."""
+        if not self.in_bounds(x, y):
+            return False
+        
+        # Must be on room edge
+        if not (x == room.x or x == room.x + room.width - 1 or 
+                y == room.y or y == room.y + room.height - 1):
+            return False
+        
+        # Check if there's floor on both sides (corridor outside, room inside)
+        has_room_floor = False
+        has_corridor_floor = False
+        
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if self.in_bounds(nx, ny):
+                tile = self.get_tile(nx, ny)
+                if tile == TileType.FLOOR:
+                    if room.contains(nx, ny):
+                        has_room_floor = True
+                    else:
+                        has_corridor_floor = True
+        
+        return has_room_floor and has_corridor_floor
     
     def _is_valid_door_position(self, x: int, y: int, room: Room) -> bool:
         """Check if a position is valid for a door."""
@@ -339,163 +608,102 @@ class DungeonGenerator(MapGenerator):
         # and have exactly 2 adjacent floor tiles
         return adjacent_floor == 2 and has_room_floor and has_corridor_floor
     
-    def _ensure_all_rooms_connected(self) -> None:
-        """Verify all rooms are connected and add corridors if needed."""
-        if len(self.rooms) < 2:
-            return
-        
-        # Use flood fill to find connected components
-        visited = [[False for _ in range(self.width)] for _ in range(self.height)]
-        components = []
-        
-        for i, room in enumerate(self.rooms):
-            # Check if this room has already been visited
-            already_visited = False
-            for comp in components:
-                if i in comp:
-                    already_visited = True
-                    break
-            
-            if not already_visited:
-                # Find a floor tile in this room to start from
-                start_x, start_y = None, None
-                for y in range(room.y + 1, room.y + room.height - 1):
-                    for x in range(room.x + 1, room.x + room.width - 1):
-                        if self.get_tile(x, y) == TileType.FLOOR:
-                            start_x, start_y = x, y
-                            break
-                    if start_x is not None:
-                        break
-                
-                if start_x is not None:
-                    # Start a new component
-                    component = []
-                    self._flood_fill_rooms(start_x, start_y, visited, component)
-                    if i not in component:
-                        component.append(i)  # Ensure this room is in its component
-                    components.append(component)
-        
-        # If there's more than one component, connect them
-        if len(components) > 1:
-            # Connect each component to the main component
-            main_component = components[0]
-            for i in range(1, len(components)):
-                # Find closest pair of rooms between components
-                min_dist = float('inf')
-                best_room1 = None
-                best_room2 = None
-                
-                for room_idx1 in main_component:
-                    room1 = self.rooms[room_idx1]
-                    cx1, cy1 = room1.center()
-                    
-                    for room_idx2 in components[i]:
-                        room2 = self.rooms[room_idx2]
-                        cx2, cy2 = room2.center()
-                        
-                        dist = abs(cx1 - cx2) + abs(cy1 - cy2)
-                        if dist < min_dist:
-                            min_dist = dist
-                            best_room1 = room1
-                            best_room2 = room2
-                
-                # Connect the closest rooms with a wider corridor
-                if best_room1 and best_room2:
-                    cx1, cy1 = best_room1.center()
-                    cx2, cy2 = best_room2.center()
-                    
-                    # Use wider corridors for better connectivity
-                    old_width = self.config.corridor_width
-                    self.config.corridor_width = 2  # Temporarily use wider corridors
-                    
-                    # Carve corridor twice with slight offset for reliability
-                    self._carve_simple_corridor(cx1, cy1, cx2, cy2)
-                    # Try alternate path too
-                    if abs(cx1 - cx2) > 2 and abs(cy1 - cy2) > 2:
-                        self._carve_simple_corridor(cx1 + 1, cy1, cx2, cy2 + 1)
-                    
-                    self.config.corridor_width = old_width  # Restore original width
-                    
-                    # Merge this component into main
-                    main_component.extend(components[i])
-    
-    def _flood_fill_rooms(self, start_x: int, start_y: int, visited: list, component: list) -> None:
-        """Flood fill to find connected rooms using iterative approach."""
-        queue = deque([(start_x, start_y)])
-        
-        while queue:
-            x, y = queue.popleft()
-            
-            if not self.in_bounds(x, y) or visited[y][x]:
-                continue
-            
-            if self.get_tile(x, y) not in [TileType.FLOOR, TileType.DOOR]:
-                continue
-            
-            visited[y][x] = True
-            
-            # Find which room contains this position
-            for i, room in enumerate(self.rooms):
-                if room.contains(x, y):
-                    if i not in component:
-                        component.append(i)
-                    break
-            
-            # Add adjacent positions to queue
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                queue.append((x + dx, y + dy))
                 
     def _place_stairs(self) -> None:
         """Place stairs in the dungeon."""
-        if len(self.rooms) >= 2:
-            # Find the largest connected component after ensuring connectivity
-            visited = [[False for _ in range(self.width)] for _ in range(self.height)]
-            largest_component = []
+        if len(self.rooms) < 2:
+            return
             
-            # Find a floor tile to start from
-            for room in self.rooms:
-                for y in range(room.y + 1, room.y + room.height - 1):
-                    for x in range(room.x + 1, room.x + room.width - 1):
-                        if self.get_tile(x, y) == TileType.FLOOR and not visited[y][x]:
-                            component = []
-                            self._flood_fill_rooms(x, y, visited, component)
-                            if len(component) > len(largest_component):
-                                largest_component = component
+        # Find the main connected component
+        components = self._find_connected_components()
+        if not components:
+            return
             
-            # Place stairs in rooms from the largest component
-            if len(largest_component) >= 2:
-                # Stairs up in first connected room
-                room1 = self.rooms[largest_component[0]]
-                cx, cy = room1.center()
-                # Make sure center is floor
-                if self.get_tile(cx, cy) != TileType.FLOOR:
-                    # Find a floor tile in the room
-                    for y in range(room1.y + 1, room1.y + room1.height - 1):
-                        for x in range(room1.x + 1, room1.x + room1.width - 1):
-                            if self.get_tile(x, y) == TileType.FLOOR:
-                                cx, cy = x, y
-                                break
-                        if self.get_tile(cx, cy) == TileType.FLOOR:
-                            break
-                self.set_tile(cx, cy, TileType.STAIRS_UP)
+        # Use the largest component (should be the only one after validation)
+        largest_component = max(components, key=len)
+        
+        if len(largest_component) < 2:
+            # Not enough connected rooms for stairs
+            return
+            
+        # Place stairs in rooms from the connected component
+        # Use first and last rooms in the component for maximum distance
+        room1_idx = largest_component[0]
+        room2_idx = largest_component[-1]
+        
+        room1 = self.rooms[room1_idx]
+        room2 = self.rooms[room2_idx]
+        
+        # Place stairs up in first room
+        cx, cy = room1.center()
+        # Make sure center is floor
+        if self.get_tile(cx, cy) != TileType.FLOOR:
+            # Find a floor tile in the room
+            for y in range(room1.y + 1, room1.y + room1.height - 1):
+                for x in range(room1.x + 1, room1.x + room1.width - 1):
+                    if self.get_tile(x, y) == TileType.FLOOR:
+                        cx, cy = x, y
+                        break
+                if self.get_tile(cx, cy) == TileType.FLOOR:
+                    break
+        self.set_tile(cx, cy, TileType.STAIRS_UP)
+        
+        # Place stairs down in last room
+        cx, cy = room2.center()
+        # Make sure center is floor
+        if self.get_tile(cx, cy) != TileType.FLOOR:
+            # Find a floor tile in the room
+            for y in range(room2.y + 1, room2.y + room2.height - 1):
+                for x in range(room2.x + 1, room2.x + room2.width - 1):
+                    if self.get_tile(x, y) == TileType.FLOOR:
+                        cx, cy = x, y
+                        break
+                if self.get_tile(cx, cy) == TileType.FLOOR:
+                    break
+        self.set_tile(cx, cy, TileType.STAIRS_DOWN)
+    
+    def _generate_simple_dungeon(self) -> None:
+        """Generate a simple but guaranteed connected dungeon as a fallback."""
+        self.debug_message("Generating simple fallback dungeon...", "warning")
+        self.clear(TileType.WALL)
+        self.rooms = []
+        
+        # Create a simple 3x3 grid of rooms with guaranteed connections
+        room_size = 6
+        spacing = 10
+        
+        for row in range(3):
+            for col in range(3):
+                x = 5 + col * (room_size + spacing)
+                y = 5 + row * (room_size + spacing)
                 
-                # Stairs down in last connected room
-                room2 = self.rooms[largest_component[-1]]
-                cx, cy = room2.center()
-                # Make sure center is floor
-                if self.get_tile(cx, cy) != TileType.FLOOR:
-                    # Find a floor tile in the room
-                    for y in range(room2.y + 1, room2.y + room2.height - 1):
-                        for x in range(room2.x + 1, room2.x + room2.width - 1):
-                            if self.get_tile(x, y) == TileType.FLOOR:
-                                cx, cy = x, y
-                                break
-                        if self.get_tile(cx, cy) == TileType.FLOOR:
-                            break
-                self.set_tile(cx, cy, TileType.STAIRS_DOWN)
-            else:
-                # Fallback - just use first two rooms
-                cx, cy = self.rooms[0].center()
-                self.set_tile(cx, cy, TileType.STAIRS_UP)
-                cx, cy = self.rooms[-1].center()
-                self.set_tile(cx, cy, TileType.STAIRS_DOWN)
+                # Make sure room fits on map
+                if x + room_size >= self.width - 1 or y + room_size >= self.height - 1:
+                    continue
+                
+                room = Room(x, y, room_size, room_size)
+                self._carve_room(room)
+                self.rooms.append(room)
+                
+                # Connect to previous room in row
+                if col > 0 and len(self.rooms) > 1:
+                    prev_room = self.rooms[-2]
+                    cx1, cy1 = prev_room.center()
+                    cx2, cy2 = room.center()
+                    self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                
+                # Connect to room above
+                if row > 0 and col < len(self.rooms) - 3:
+                    above_idx = len(self.rooms) - 4
+                    if above_idx >= 0:
+                        above_room = self.rooms[above_idx]
+                        cx1, cy1 = above_room.center()
+                        cx2, cy2 = room.center()
+                        self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+        
+        self.debug_message(f"Simple dungeon created with {len(self.rooms)} rooms", "info")
+        
+        # Place stairs in first and last rooms
+        if len(self.rooms) >= 2:
+            self._place_stairs()
+            self.debug_message("Simple dungeon generation complete!", "info")

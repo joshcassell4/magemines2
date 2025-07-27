@@ -1,4 +1,4 @@
-import time
+import logging
 from .map import GameMap
 from .player import Player
 from .input_handler import InputHandler
@@ -11,14 +11,26 @@ from ..ui.layout_manager import LayoutManager
 from ..core.state import GameState, GamePhase
 from ..core.terminal import BlessedTerminal, Position, Color
 from ..core.config import get_config, ConfigSection
+from ..core.logging_config import LoggingConfig
 
 
 def run_game():
+    # Initialize logging
+    debug_config = get_config(ConfigSection.DEBUG)
+    LoggingConfig.setup_logging(
+        log_level="DEBUG" if debug_config.debug_mode else "INFO",
+        log_to_console=False,  # Don't interfere with game display
+        log_to_file=True,
+        detailed_format=debug_config.debug_mode
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Starting MageMines game loop")
+    
     # Load configuration
     ui_config = get_config(ConfigSection.UI)
     display_config = get_config(ConfigSection.DISPLAY)
     game_config = get_config(ConfigSection.GAME)
-    debug_config = get_config(ConfigSection.DEBUG)
     
     # Create terminal adapter first to get terminal dimensions
     terminal_adapter = BlessedTerminal()
@@ -73,6 +85,9 @@ def run_game():
         )
         input_handler.set_message_pane(message_pane)
         message_pane._current_turn = game_state.turn.turn_number
+        
+        # Pass message pane to game map for debug output
+        game_map.set_message_pane(message_pane)
         
         # Create demo handler
         demo_handler = DemoHandler(async_manager, message_pane)

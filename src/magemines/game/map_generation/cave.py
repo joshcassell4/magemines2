@@ -9,6 +9,10 @@ from .base import MapGenerator, TileType, MapGeneratorConfig
 class CaveGenerator(MapGenerator):
     """Generates caves using cellular automata."""
     
+    def __init__(self, config: MapGeneratorConfig, message_pane=None):
+        """Initialize the cave generator."""
+        super().__init__(config, message_pane)
+    
     def generate(self) -> None:
         """Generate a cave level."""
         # Initialize with random walls

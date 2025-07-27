@@ -1,5 +1,6 @@
 """Input handling for the game."""
 
+import logging
 from enum import Enum, auto
 from typing import Optional, Union
 
@@ -44,9 +45,11 @@ class InputHandler:
     
     def __init__(self):
         """Initialize input handler."""
+        self.logger = logging.getLogger(__name__)
         self.awaiting_confirmation = False
         self.confirmation_action = None
         self._message_pane: Optional[MessagePane] = None
+        self.logger.debug("InputHandler initialized")
         
         # Key mappings
         self._key_map = {
@@ -99,10 +102,16 @@ class InputHandler:
         """Convert a key press to an action."""
         # If awaiting confirmation, only accept y/n
         if self.awaiting_confirmation:
-            return self._confirm_map.get(key, InputAction.UNKNOWN)
+            action = self._confirm_map.get(key, InputAction.UNKNOWN)
+            if action != InputAction.UNKNOWN:
+                self.logger.debug(f"Confirmation key pressed: {key} -> {action.name}")
+            return action
         
         # Normal key mapping
-        return self._key_map.get(key, InputAction.UNKNOWN)
+        action = self._key_map.get(key, InputAction.UNKNOWN)
+        if action != InputAction.UNKNOWN:
+            self.logger.debug(f"Key pressed: {key} -> {action.name}")
+        return action
     
     def handle_action(
         self,
@@ -419,7 +428,7 @@ class InputHandler:
         if self._message_pane:
             self._message_pane.add_message(
                 f"You gather some {resource_name}.",
-                MessageCategory.ACTION
+                MessageCategory.GENERAL
             )
         
         # TODO: Add the resource to player's inventory when inventory system is ready
