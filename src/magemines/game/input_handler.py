@@ -108,6 +108,8 @@ class InputHandler:
     
     def get_action(self, key: str) -> InputAction:
         """Convert a key press to an action."""
+        self.logger.debug(f"get_action called with key: '{key}'")
+        
         # If inventory is visible, handle special keys
         if self.inventory_visible:
             if key == 'KEY_ESCAPE' or key == '\x1b':  # ESC key
@@ -128,6 +130,8 @@ class InputHandler:
         action = self._key_map.get(key, InputAction.UNKNOWN)
         if action != InputAction.UNKNOWN:
             self.logger.debug(f"Key pressed: {key} -> {action.name}")
+        else:
+            self.logger.debug(f"Unknown key pressed: '{key}'")
         return action
     
     def handle_action(
@@ -143,6 +147,7 @@ class InputHandler:
             bool: True if action was handled, False if blocked
             str: Special return values like "QUIT"
         """
+        self.logger.debug(f"handle_action called with action: {action.name}")
         # Handle confirmation actions
         if action == InputAction.CONFIRM_YES and self.awaiting_confirmation:
             if self.confirmation_action == InputAction.QUIT:
@@ -429,8 +434,11 @@ class InputHandler:
         from ..game.resources import ResourceType, RESOURCE_PROPERTIES
         from ..game.map_generation import TileType
         
+        self.logger.debug(f"_handle_gather called at position ({player.x}, {player.y})")
+        
         # Get the tile the player is standing on
         tile = game_map.get_tile_at(player.x, player.y)
+        self.logger.debug(f"Tile at player position: '{tile}'")
         
         # Map of resource tiles to ResourceType
         resource_tile_map = {

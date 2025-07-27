@@ -135,7 +135,7 @@ def run_game():
             game_map.clear_player(terminal_adapter._term, player)
             
             # Process game input
-            result = input_handler.process_input(key, player, game_map, game_state)
+            result = input_handler.process_input(str(key), player, game_map, game_state)
             
             if result == "QUIT":
                 break

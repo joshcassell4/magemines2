@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional, List
-from ..core.terminal import BlessedTerminal, Position, Color
+from ..core.terminal import BlessedTerminal, Position, Color, TerminalChar
 from ..game.components import Inventory
 from ..game.resources import ResourceType, RESOURCE_PROPERTIES
 
@@ -19,6 +19,7 @@ class InventoryDisplay:
         self.terminal = terminal
         self.logger = logging.getLogger(__name__)
         self.visible = False
+        self._needs_redraw = True  # Track if we need to redraw
         
         # Colors
         self.border_color = Color(100, 100, 100)  # Gray border
@@ -26,18 +27,27 @@ class InventoryDisplay:
         self.text_color = Color(200, 200, 200)    # Light gray text
         self.empty_color = Color(100, 100, 100)   # Dark gray for empty slots
         self.highlight_color = Color(255, 255, 255)  # White for highlights
+        self.bg_color = Color(20, 20, 20)  # Dark background
         
     def toggle(self):
         """Toggle inventory visibility."""
         self.visible = not self.visible
+        self._needs_redraw = True  # Need to redraw when toggling
+        self.logger.info(f"Inventory toggled, visible={self.visible}")
         
     def show(self):
         """Show the inventory."""
         self.visible = True
+        self._needs_redraw = True
         
     def hide(self):
         """Hide the inventory."""
         self.visible = False
+        self._needs_redraw = True
+        
+    def mark_dirty(self):
+        """Mark the inventory as needing redraw."""
+        self._needs_redraw = True
     
     def render(self, inventory: Optional[Inventory]) -> None:
         """Render the inventory overlay.
@@ -45,32 +55,64 @@ class InventoryDisplay:
         Args:
             inventory: The inventory component to display
         """
+        self.logger.debug(f"Inventory render called, visible={self.visible}, has_inventory={inventory is not None}, needs_redraw={self._needs_redraw}")
         if not self.visible or not inventory:
             return
             
-        # Calculate overlay dimensions
-        width = 60
-        height = 20
-        x = (self.terminal.width - width) // 2
-        y = (self.terminal.height - height) // 2
+        # Only redraw if needed
+        if not self._needs_redraw:
+            return
+            
+        try:
+            # Calculate overlay dimensions
+            width = 60
+            height = 20
+            x = (self.terminal.width - width) // 2
+            y = (self.terminal.height - height) // 2
+            
+            self.logger.debug(f"Drawing inventory at ({x}, {y}), size={width}x{height}")
+            
+            # Draw background box
+            self._draw_box(x, y, width, height)
+            
+            # Draw title
+            title = "INVENTORY"
+            title_x = x + (width - len(title)) // 2
+            self._draw_text(title_x, y, title, self.title_color, self.bg_color)
+            
+            # Draw inventory contents
+            self._draw_inventory_contents(x + 2, y + 2, width - 4, height - 4, inventory)
+            
+            # Draw help text
+            help_text = "Press 'i' or ESC to close"
+            help_x = x + (width - len(help_text)) // 2
+            self._draw_text(help_x, y + height - 1, help_text, self.text_color, self.bg_color)
+            
+            self.logger.debug("Inventory render completed successfully")
+            # Mark as redrawn
+            self._needs_redraw = False
+        except Exception as e:
+            self.logger.error(f"Error rendering inventory: {e}", exc_info=True)
+    
+    def _draw_text(self, x: int, y: int, text: str, fg_color: Color, bg_color: Optional[Color] = None) -> None:
+        """Draw text at a specific position with color.
         
-        # Draw background box
-        self._draw_box(x, y, width, height)
-        
-        # Draw title
-        title = "INVENTORY"
-        title_x = x + (width - len(title)) // 2
-        with self.terminal.location(title_x, y):
-            print(self.terminal.color_rgb(*self.title_color.rgb) + title + self.terminal.normal)
-        
-        # Draw inventory contents
-        self._draw_inventory_contents(x + 2, y + 2, width - 4, height - 4, inventory)
-        
-        # Draw help text
-        help_text = "Press 'i' or ESC to close"
-        help_x = x + (width - len(help_text)) // 2
-        with self.terminal.location(help_x, y + height - 1):
-            print(self.terminal.color_rgb(*self.text_color.rgb) + help_text + self.terminal.normal)
+        Args:
+            x: X position
+            y: Y position  
+            text: Text to draw
+            fg_color: Foreground color
+            bg_color: Background color (optional)
+        """
+        try:
+            for i, char in enumerate(text):
+                if x + i < self.terminal.width:
+                    self.terminal.write_char(
+                        Position(x + i, y),
+                        TerminalChar(char, fg_color, bg_color)
+                    )
+        except Exception as e:
+            self.logger.error(f"Error drawing text at ({x}, {y}): {e}")
     
     def _draw_box(self, x: int, y: int, width: int, height: int) -> None:
         """Draw a box with borders.
@@ -81,21 +123,30 @@ class InventoryDisplay:
             width: Box width
             height: Box height
         """
-        term = self.terminal
-        border_style = term.color_rgb(*self.border_color.rgb)
+        # Draw top border
+        self._draw_text(x, y, '+' + '-' * (width - 2) + '+', self.border_color, self.bg_color)
         
-        # Top border
-        with term.location(x, y):
-            print(border_style + '╔' + '═' * (width - 2) + '╗' + term.normal)
-        
-        # Side borders and clear interior
+        # Draw sides and clear interior
         for i in range(1, height - 1):
-            with term.location(x, y + i):
-                print(border_style + '║' + term.normal + ' ' * (width - 2) + border_style + '║' + term.normal)
+            # Left border
+            self.terminal.write_char(
+                Position(x, y + i),
+                TerminalChar('|', self.border_color, self.bg_color)
+            )
+            # Clear interior
+            for j in range(1, width - 1):
+                self.terminal.write_char(
+                    Position(x + j, y + i),
+                    TerminalChar(' ', self.text_color, self.bg_color)
+                )
+            # Right border
+            self.terminal.write_char(
+                Position(x + width - 1, y + i),
+                TerminalChar('|', self.border_color, self.bg_color)
+            )
         
-        # Bottom border
-        with term.location(x, y + height - 1):
-            print(border_style + '╚' + '═' * (width - 2) + '╝' + term.normal)
+        # Draw bottom border
+        self._draw_text(x, y + height - 1, '+' + '-' * (width - 2) + '+', self.border_color, self.bg_color)
     
     def _draw_inventory_contents(self, x: int, y: int, width: int, height: int, inventory: Inventory) -> None:
         """Draw the inventory contents.
@@ -107,12 +158,9 @@ class InventoryDisplay:
             height: Content area height
             inventory: The inventory to display
         """
-        term = self.terminal
-        
         # Show capacity
         capacity_text = f"Capacity: {len(inventory.stacks)}/{inventory.capacity}"
-        with term.location(x, y):
-            print(term.color_rgb(*self.text_color.rgb) + capacity_text + term.normal)
+        self._draw_text(x, y, capacity_text, self.text_color, self.bg_color)
         
         # Calculate extra capacity from strength
         if hasattr(inventory, '_entity'):
@@ -122,8 +170,7 @@ class InventoryDisplay:
                 extra = stats.carrying_capacity
                 if extra > 0:
                     extra_text = f" (+{extra} from strength)"
-                    with term.location(x + len(capacity_text), y):
-                        print(term.color_rgb(*self.highlight_color.rgb) + extra_text + term.normal)
+                    self._draw_text(x + len(capacity_text), y, extra_text, self.highlight_color, self.bg_color)
         
         # Display resources
         line = 2
@@ -145,20 +192,20 @@ class InventoryDisplay:
                     
                 props = RESOURCE_PROPERTIES[resource_type]
                 
-                # Format: [symbol] Resource Name: quantity
-                resource_line = f"{props.symbol} {props.name}: {total}"
+                # Draw symbol in resource color
+                self.terminal.write_char(
+                    Position(x, y + line),
+                    TerminalChar(props.symbol, Color(*props.color), self.bg_color)
+                )
                 
-                # Use resource color for the symbol
-                with term.location(x, y + line):
-                    # Symbol in resource color
-                    print(term.color_rgb(*props.color) + props.symbol + term.normal, end=' ')
-                    # Name and quantity in text color
-                    print(term.color_rgb(*self.text_color.rgb) + 
-                          f"{props.name}: {total}" + term.normal)
+                # Draw name and quantity in text color
+                name_text = f" {props.name}: {total}"
+                self._draw_text(x + 2, y + line, name_text, self.text_color, self.bg_color)
                 
                 line += 1
         else:
             # Empty inventory message
             empty_msg = "Your inventory is empty"
-            with term.location(x + (width - len(empty_msg)) // 2, y + height // 2):
-                print(term.color_rgb(*self.empty_color.rgb) + empty_msg + term.normal)
+            msg_x = x + (width - len(empty_msg)) // 2
+            msg_y = y + height // 2
+            self._draw_text(msg_x, msg_y, empty_msg, self.empty_color, self.bg_color)

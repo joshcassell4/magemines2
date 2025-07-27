@@ -172,6 +172,7 @@ simulate_gameplay(scenario)
 ## Screen Rendering Concerns
 
 - Minimizing screen flickering in this project is a maximum concern. Please update the screen carefully and only redraw the pieces of the screen that need redrawing during any screen manipulation.
+- **Performance Critical**: We need to minimize redraws in this application to as few as possible. They kill performance and make the game unplayable
 
 ## Development Environment Notes
 

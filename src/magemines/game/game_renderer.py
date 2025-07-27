@@ -80,7 +80,12 @@ class GameRenderer:
         
         # Render inventory overlay if visible
         if self.inventory_display.visible:
-            inventory = player.get_component('Inventory')
+            from ..game.components import Inventory
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug("Inventory display is visible, retrieving inventory component")
+            inventory = player.get_component(Inventory)
+            logger.debug(f"Got inventory component: {inventory}")
             self.inventory_display.render(inventory)
             
     def handle_level_change(self, game_map: GameMap, player: Player) -> None:
@@ -94,6 +99,8 @@ class GameRenderer:
     
     def toggle_inventory(self) -> None:
         """Toggle the inventory display."""
+        was_visible = self.inventory_display.visible
         self.inventory_display.toggle()
-        # Force a full redraw to clear/show the overlay
-        self.async_manager.needs_full_redraw = True
+        # Force a full redraw when hiding to clear the overlay
+        if was_visible:
+            self.async_manager.needs_full_redraw = True
