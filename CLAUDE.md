@@ -173,6 +173,13 @@ simulate_gameplay(scenario)
 
 - Minimizing screen flickering in this project is a maximum concern. Please update the screen carefully and only redraw the pieces of the screen that need redrawing during any screen manipulation.
 
+## Development Environment Notes
+
+- **Windows Development Considerations**:
+  - We are developing on Windows, please keep this in mind
+  - Be careful with any operations that involve nul in the filesystem
+  - There have been ghosted nul files left over sometimes that are a pain to delete
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
