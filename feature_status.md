@@ -195,8 +195,13 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [x] Food/consumables (mushrooms, herbs)
 - [x] Basic gathering mechanics ⚡ **COMPLETED** (2025-07-27)
   - [x] Resource placement in map generation
+    - [x] Dynamic resource density based on depth (2% base + 10% per level)
+    - [x] Resource clustering algorithm (60% chance to cluster near existing resources)
+    - [x] Resource type selection based on rarity tiers
+    - [x] All 7 resource types: Wood, Stone, Ore, Crystal, Essence, Mushrooms, Herbs
   - [x] 'g' key to gather resources
   - [x] Resource removal from map when gathered
+  - [x] Resource display on map with unique symbols
   - [ ] Tool requirements
   - [ ] Skill-based yields
   - [ ] Resource depletion
@@ -205,9 +210,20 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [ ] Crafting stations
   - [ ] Quality levels
   - [ ] Failure chances
-- [ ] Item management
-  - [ ] Inventory system
-  - [ ] Item stacking
+- [x] Item management ⚡ **COMPLETED** (2025-07-27)
+  - [x] Inventory system (Completed - 2025-07-27)
+    - [x] Entity Component System integration
+    - [x] 20-slot inventory with capacity management
+    - [x] Resource stacking with per-type stack limits
+    - [x] Overflow handling when inventory is full
+    - [x] Add/remove resource operations
+    - [x] Resource counting and empty/full state tracking
+  - [x] Inventory UI overlay (toggleable with 'i' key)
+    - [x] Centered box display with borders
+    - [x] Resource grouping by type
+    - [x] Color-coded resource display
+    - [x] Current count and stack limit display
+  - [x] Item stacking (part of inventory system)
   - [ ] Storage containers
   - [ ] Item decay
 
@@ -235,6 +251,30 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [ ] Stat modifications
   - [ ] Set bonuses
   - [ ] Item identification
+
+### Phase 9: Save/Load & Persistence
+**Status**: Not Started  
+**Target**: Week 11
+
+- [ ] Save/Load System
+  - [ ] Game state serialization
+  - [ ] Player inventory persistence
+  - [ ] Entity state saving
+  - [ ] Map state preservation
+- [ ] Level Serialization
+  - [ ] Level data compression
+  - [ ] Disk-based level storage
+  - [ ] LRU cache for active levels
+  - [ ] Lazy loading of distant levels
+- [ ] Save File Management
+  - [ ] Multiple save slots
+  - [ ] Autosave functionality
+  - [ ] Save file versioning
+  - [ ] Save corruption detection
+- [ ] Cloud Save Support (Future)
+  - [ ] Steam Cloud integration
+  - [ ] Cross-platform saves
+  - [ ] Save sync conflict resolution
 
 ## Technical Architecture
 
@@ -301,6 +341,22 @@ src/magemines/
 - ~~Recursion depth error when going below certain dungeon levels~~ **FIXED** (2025-07-25)
   - Converted recursive flood fill algorithms to iterative approach using deque
   - Tested successfully up to level 30 and with 100x100 maps
+- ~~Town connectivity issues with isolated buildings~~ **FIXED** (2025-07-27)
+  - Towns now place 2-3 doors per building (was 1)
+  - Added post-generation connectivity checking with flood fill
+  - Automatic path creation between disconnected regions
+  - Added perimeter roads and cross roads for better connectivity
+  - Tested with 100% connectivity success rate
+- ~~Resource symbol conflicts~~ **FIXED** (2025-07-27)
+  - Stone resource was using '*' which conflicted with altar symbol
+  - Changed stone symbol to 's' across all files
+  - All resources now have unique visual representations
+- ~~Unicode character compatibility~~ **FIXED** (2025-07-27)
+  - Converted all Unicode symbols to ASCII for better terminal compatibility
+  - Altar: ▲ → ^, Chest: □ → $, Lava: ≈ → %
+  - Crystal/Essence: ♦/◊ → *, Mushroom: ♠ → m, Herbs: ♣ → h
+  - Added special handling for crystal/essence disambiguation using TileType
+  - Game now runs properly in all terminal environments
 
 ### Critical Issues (from Code Review)
 1. **Memory Management**: LevelManager keeps all visited levels in memory indefinitely

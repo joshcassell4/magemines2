@@ -37,6 +37,9 @@ class InputAction(Enum):
     OPEN_DOOR = auto()
     GATHER = auto()
     
+    # UI
+    SHOW_INVENTORY = auto()
+    
     UNKNOWN = auto()
 
 
@@ -49,6 +52,7 @@ class InputHandler:
         self.awaiting_confirmation = False
         self.confirmation_action = None
         self._message_pane: Optional[MessagePane] = None
+        self.inventory_visible = False
         self.logger.debug("InputHandler initialized")
         
         # Key mappings
@@ -84,6 +88,10 @@ class InputHandler:
             'O': InputAction.OPEN_DOOR,
             'g': InputAction.GATHER,
             'G': InputAction.GATHER,
+            
+            # UI
+            'i': InputAction.SHOW_INVENTORY,
+            'I': InputAction.SHOW_INVENTORY,
         }
         
         # Confirmation keys
@@ -100,6 +108,15 @@ class InputHandler:
     
     def get_action(self, key: str) -> InputAction:
         """Convert a key press to an action."""
+        # If inventory is visible, handle special keys
+        if self.inventory_visible:
+            if key == 'KEY_ESCAPE' or key == '\x1b':  # ESC key
+                return InputAction.SHOW_INVENTORY  # Toggle it off
+            elif key in ['i', 'I']:
+                return InputAction.SHOW_INVENTORY  # Toggle it off
+            # Block other actions while inventory is open
+            return InputAction.UNKNOWN
+        
         # If awaiting confirmation, only accept y/n
         if self.awaiting_confirmation:
             action = self._confirm_map.get(key, InputAction.UNKNOWN)
@@ -192,6 +209,11 @@ class InputHandler:
         elif action == InputAction.GATHER:
             return self._handle_gather(player, game_map)
         
+        # Handle inventory
+        elif action == InputAction.SHOW_INVENTORY:
+            self.inventory_visible = not self.inventory_visible
+            return "SHOW_INVENTORY"
+        
         # Unknown action
         return False
     
@@ -245,17 +267,25 @@ class InputHandler:
         tile = game_map.get_tile_at(player.x, player.y)
         resource_tiles = {
             't': "wood",
-            '*': "stone", 
+            's': "stone", 
             'o': "iron ore",
-            '♦': "magic crystal",
-            '◊': "arcane essence",
-            '♠': "mushroom",
-            '♣': "healing herbs"
+            '*': "magical gems",  # Could be crystal or essence  
+            'm': "mushroom",
+            'h': "healing herbs"
         }
         
         if tile in resource_tiles:
             if self._message_pane:
                 resource_name = resource_tiles[tile]
+                # Special handling for '*' to determine exact type
+                if tile == '*' and game_map.generator:
+                    from ..game.map_generation import TileType
+                    tile_type = game_map.generator.get_tile(player.x, player.y)
+                    if tile_type == TileType.RESOURCE_CRYSTAL:
+                        resource_name = "magic crystal"
+                    elif tile_type == TileType.RESOURCE_ESSENCE:
+                        resource_name = "arcane essence"
+                
                 self._message_pane.add_message(
                     f"You see some {resource_name} here. Press 'g' to gather it.",
                     MessageCategory.INFO
@@ -396,21 +426,23 @@ class InputHandler:
     
     def _handle_gather(self, player, game_map) -> Union[bool, str]:
         """Handle gathering resources."""
+        from ..game.resources import ResourceType, RESOURCE_PROPERTIES
+        from ..game.map_generation import TileType
+        
         # Get the tile the player is standing on
         tile = game_map.get_tile_at(player.x, player.y)
         
-        # Map of resource tiles to their names
-        resource_tiles = {
-            't': "wood",
-            '*': "stone", 
-            'o': "iron ore",
-            '♦': "magic crystal",
-            '◊': "arcane essence",
-            '♠': "mushroom",
-            '♣': "healing herbs"
+        # Map of resource tiles to ResourceType
+        resource_tile_map = {
+            't': ResourceType.WOOD,
+            's': ResourceType.STONE, 
+            'o': ResourceType.ORE,
+            '*': None,  # Special handling needed - could be crystal or essence
+            'm': ResourceType.FOOD,     # mushroom
+            'h': ResourceType.HERBS
         }
         
-        if tile not in resource_tiles:
+        if tile not in resource_tile_map:
             if self._message_pane:
                 self._message_pane.add_message(
                     "There's nothing here to gather.",
@@ -418,20 +450,66 @@ class InputHandler:
                 )
             return False
         
-        # Get the resource name
-        resource_name = resource_tiles[tile]
+        # Get the resource type
+        resource_type = resource_tile_map[tile]
         
-        # For now, just pick it up instantly (later we'll add gathering time)
-        # Clear the resource from the map
-        game_map.tiles[player.y][player.x] = '.'
+        # Special handling for '*' symbol (crystal or essence)
+        if tile == '*' and game_map.generator:
+            # Check the actual tile type from the generator
+            tile_type = game_map.generator.get_tile(player.x, player.y)
+            if tile_type == TileType.RESOURCE_CRYSTAL:
+                resource_type = ResourceType.CRYSTAL
+            elif tile_type == TileType.RESOURCE_ESSENCE:
+                resource_type = ResourceType.ESSENCE
+            else:
+                # Default to crystal if we can't determine
+                resource_type = ResourceType.CRYSTAL
+        elif tile == '*':
+            # No generator available, default to crystal
+            resource_type = ResourceType.CRYSTAL
+            
+        if resource_type is None:
+            return False
+            
+        props = RESOURCE_PROPERTIES[resource_type]
         
-        if self._message_pane:
-            self._message_pane.add_message(
-                f"You gather some {resource_name}.",
-                MessageCategory.GENERAL
-            )
+        # Check if player has required tool
+        gatherer = player.get_component('Gatherer')
+        if gatherer and not gatherer.can_gather(props.tool_required):
+            if self._message_pane:
+                self._message_pane.add_message(
+                    f"You need a {props.tool_required} to gather {props.name}.",
+                    MessageCategory.WARNING
+                )
+            return False
         
-        # TODO: Add the resource to player's inventory when inventory system is ready
+        # Calculate yield (for now, use average)
+        import random
+        yield_amount = random.randint(props.min_yield, props.max_yield)
+        
+        # Add to inventory
+        inventory = player.get_component('Inventory')
+        if inventory:
+            overflow = inventory.add_resource(resource_type, yield_amount)
+            
+            # Clear the resource from the map
+            game_map.tiles[player.y][player.x] = '.'
+            
+            if overflow > 0:
+                actual_gathered = yield_amount - overflow
+                if self._message_pane:
+                    self._message_pane.add_message(
+                        f"You gather {actual_gathered} {props.name}. ({overflow} couldn't fit!)",
+                        MessageCategory.WARNING
+                    )
+            else:
+                # Show total count
+                total = inventory.get_resource_count(resource_type)
+                if self._message_pane:
+                    self._message_pane.add_message(
+                        f"You gather {yield_amount} {props.name}. [Total: {total}]",
+                        MessageCategory.GENERAL
+                    )
         
         return True
 

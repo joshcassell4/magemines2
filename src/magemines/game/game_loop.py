@@ -18,10 +18,10 @@ def run_game():
     # Initialize logging
     debug_config = get_config(ConfigSection.DEBUG)
     LoggingConfig.setup_logging(
-        log_level="DEBUG" if debug_config.debug_mode else "INFO",
+        log_level="DEBUG",  # Always use DEBUG for now to debug connectivity
         log_to_console=False,  # Don't interfere with game display
         log_to_file=True,
-        detailed_format=debug_config.debug_mode
+        detailed_format=True  # Use detailed format to see where messages come from
     )
     
     logger = logging.getLogger(__name__)
@@ -146,6 +146,11 @@ def run_game():
                 renderer.handle_level_change(game_map, player)
                 did_full_redraw = True
             
+            # Handle inventory toggle
+            if result == "SHOW_INVENTORY":
+                renderer.toggle_inventory()
+                did_full_redraw = True
+            
             # Update turn counter if action was taken
             if result and result not in ["SCROLL", "LEVEL_CHANGE"]:
                 game_state.turn.turn_number += 1
@@ -172,7 +177,7 @@ def add_welcome_messages(message_pane: MessagePane, current_depth: int) -> None:
     """
     message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM)
     message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
-    message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather)", MessageCategory.SYSTEM)
+    message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather), i (inventory)", MessageCategory.SYSTEM)
     message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM)
     message_pane.add_message("Messages: -/+ to scroll", MessageCategory.SYSTEM)
     message_pane.add_message(f"You are on level {current_depth}", MessageCategory.INFO)

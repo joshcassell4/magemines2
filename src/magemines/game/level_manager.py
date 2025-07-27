@@ -133,18 +133,18 @@ class LevelManager:
             TileType.STAIRS_UP: '<',
             TileType.STAIRS_DOWN: '>',
             TileType.WATER: '~',
-            TileType.LAVA: '≈',
-            TileType.CHEST: '□',
-            TileType.ALTAR: '▲',
+            TileType.LAVA: '%',
+            TileType.CHEST: '$',
+            TileType.ALTAR: '^',
             TileType.EMPTY: '#',
             # Resources
             TileType.RESOURCE_WOOD: 't',
-            TileType.RESOURCE_STONE: '*',
+            TileType.RESOURCE_STONE: 's',
             TileType.RESOURCE_ORE: 'o',
-            TileType.RESOURCE_CRYSTAL: '♦',
-            TileType.RESOURCE_ESSENCE: '◊',
-            TileType.RESOURCE_MUSHROOM: '♠',
-            TileType.RESOURCE_HERBS: '♣'
+            TileType.RESOURCE_CRYSTAL: '*',
+            TileType.RESOURCE_ESSENCE: '*',
+            TileType.RESOURCE_MUSHROOM: 'm',
+            TileType.RESOURCE_HERBS: 'h'
         }
         
         tiles = []

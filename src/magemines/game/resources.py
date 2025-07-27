@@ -56,7 +56,7 @@ RESOURCE_PROPERTIES: Dict[ResourceType, ResourceProperties] = {
     
     ResourceType.STONE: ResourceProperties(
         name="Stone",
-        symbol="*",
+        symbol="s",
         color=(128, 128, 128),  # Gray
         rarity=0.15,  # Common
         stack_size=100,
@@ -82,7 +82,7 @@ RESOURCE_PROPERTIES: Dict[ResourceType, ResourceProperties] = {
     
     ResourceType.CRYSTAL: ResourceProperties(
         name="Magic Crystal",
-        symbol="♦",
+        symbol="*",
         color=(147, 112, 219),  # Medium purple
         rarity=0.7,  # Rare
         stack_size=20,
@@ -95,7 +95,7 @@ RESOURCE_PROPERTIES: Dict[ResourceType, ResourceProperties] = {
     
     ResourceType.ESSENCE: ResourceProperties(
         name="Arcane Essence",
-        symbol="◊",
+        symbol="*",  # Same as crystal
         color=(255, 20, 147),  # Deep pink
         rarity=0.85,  # Very rare
         stack_size=10,
@@ -108,7 +108,7 @@ RESOURCE_PROPERTIES: Dict[ResourceType, ResourceProperties] = {
     
     ResourceType.FOOD: ResourceProperties(
         name="Mushroom",
-        symbol="♠",
+        symbol="m",
         color=(255, 140, 0),  # Dark orange
         rarity=0.25,  # Common
         stack_size=50,
@@ -121,7 +121,7 @@ RESOURCE_PROPERTIES: Dict[ResourceType, ResourceProperties] = {
     
     ResourceType.HERBS: ResourceProperties(
         name="Healing Herbs",
-        symbol="♣",
+        symbol="h",
         color=(50, 205, 50),  # Lime green
         rarity=0.35,  # Uncommon
         stack_size=30,

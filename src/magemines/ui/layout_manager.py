@@ -30,7 +30,8 @@ class LayoutManager:
     def __init__(self, terminal_width: int, terminal_height: int, 
                  message_pane_width: int = 30,
                  max_map_width: int = 80,
-                 max_map_height: int = 40):
+                 max_map_height: int = 40,
+                 message_pane_height_reduction: int = 5):
         """Initialize layout manager with terminal dimensions.
         
         Args:
@@ -39,12 +40,14 @@ class LayoutManager:
             message_pane_width: Desired width for message pane
             max_map_width: Maximum width for map area
             max_map_height: Maximum height for map area
+            message_pane_height_reduction: How many lines to reduce message pane by for future UI
         """
         self.terminal_width = terminal_width
         self.terminal_height = terminal_height
         self.message_pane_width = message_pane_width
         self.max_map_width = max_map_width
         self.max_map_height = max_map_height
+        self.message_pane_height_reduction = message_pane_height_reduction
         
     def calculate_layout(self) -> LayoutDimensions:
         """Calculate positions and sizes for all UI components.
@@ -66,7 +69,8 @@ class LayoutManager:
         # Message pane on the right side
         message_pane_x = self.terminal_width - actual_message_width
         message_pane_y = header_height
-        message_pane_height = self.terminal_height - header_height - 2
+        # Reduce message pane height to make room for future UI elements
+        message_pane_height = self.terminal_height - header_height - self.message_pane_height_reduction - 2
         message_position = Position(message_pane_x, message_pane_y)
         
         # Calculate available space for map

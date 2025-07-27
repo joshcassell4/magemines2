@@ -74,16 +74,19 @@ class DungeonGenerator(MapGenerator):
             self.debug_message("Connecting rooms...")
             self._connect_all_rooms()
             
-            # Place doors at room entrances if any rooms were marked for doors
-            if hasattr(self, '_rooms_with_doors'):
-                self.debug_message(f"Placing doors in {len(self._rooms_with_doors)} rooms")
-                self._place_room_doors()
-            
-            # Final validation to ensure connectivity
+            # Final validation to ensure connectivity BEFORE placing doors
             self.debug_message("Validating connectivity...")
             if self._validate_connectivity():
-                # Success! Place stairs and we're done
-                self.debug_message("Connectivity validated! Placing stairs...", "info")
+                # Success! Now we can place doors and stairs
+                self.debug_message("Connectivity validated!", "info")
+                
+                # Place doors at room entrances if any rooms were marked for doors
+                if hasattr(self, '_rooms_with_doors'):
+                    self.debug_message(f"Placing doors in {len(self._rooms_with_doors)} rooms")
+                    self._place_room_doors()
+                
+                # Place stairs
+                self.debug_message("Placing stairs...", "info")
                 self._place_stairs()
                 self.debug_message("Dungeon generation complete!", "info")
                 return
@@ -665,8 +668,8 @@ class DungeonGenerator(MapGenerator):
                     if self._is_corridor_entry(x, y, room):
                         entry_points.append((x, y))
             
-            # Only place doors if room has at least 2 connections
-            # This prevents trapping players in dead-end rooms
+            # Only place doors if room has multiple connections
+            # AND never block the only entrance to a room
             if len(entry_points) >= 2:
                 # Find valid door positions from entry points
                 door_positions = []
@@ -674,12 +677,16 @@ class DungeonGenerator(MapGenerator):
                     if self._is_valid_door_position(x, y, room):
                         door_positions.append((x, y))
                 
-                if door_positions:
-                    # Place 1-2 doors, but ensure at least one door if room has 2+ connections
-                    num_doors = min(random.randint(1, 2), len(door_positions))
-                    selected_positions = random.sample(door_positions, num_doors)
-                    for x, y in selected_positions:
-                        self.set_tile(x, y, TileType.DOOR)
+                if door_positions and len(door_positions) >= 2:
+                    # Place 1-2 doors, but always leave at least one entrance open
+                    # Never place doors on ALL entrances
+                    max_doors = min(2, len(door_positions) - 1)  # Always leave one entrance open
+                    if max_doors > 0:
+                        num_doors = random.randint(1, max_doors)
+                        selected_positions = random.sample(door_positions, num_doors)
+                        for x, y in selected_positions:
+                            self.set_tile(x, y, TileType.DOOR)
+                            self.debug_message(f"Placed door at ({x}, {y}) for room at ({room.x}, {room.y})")
     
     def _is_corridor_entry(self, x: int, y: int, room: Room) -> bool:
         """Check if a position is where a corridor enters the room."""
@@ -700,7 +707,9 @@ class DungeonGenerator(MapGenerator):
             if self.in_bounds(nx, ny):
                 tile = self.get_tile(nx, ny)
                 if tile == TileType.FLOOR:
-                    if room.contains(nx, ny):
+                    # Check if inside room's floor area (not walls)
+                    if (nx > room.x and nx < room.x + room.width - 1 and
+                        ny > room.y and ny < room.y + room.height - 1):
                         has_room_floor = True
                     else:
                         has_corridor_floor = True
@@ -729,8 +738,9 @@ class DungeonGenerator(MapGenerator):
                 tile = self.get_tile(nx, ny)
                 if tile == TileType.FLOOR:
                     adjacent_floor += 1
-                    # Check if this floor is inside the room or outside (corridor)
-                    if room.contains(nx, ny):
+                    # Check if this floor is inside the room's floor area (not walls)
+                    if (nx > room.x and nx < room.x + room.width - 1 and
+                        ny > room.y and ny < room.y + room.height - 1):
                         has_room_floor = True
                     else:
                         has_corridor_floor = True

@@ -6,6 +6,7 @@ from .player import Player
 from ..ui.header_bar import HeaderBar
 from ..ui.message_pane import MessagePane
 from ..ui.loading_overlay import AsyncOperationManager
+from ..ui.inventory_display import InventoryDisplay
 from ..core.terminal import BlessedTerminal
 
 
@@ -26,6 +27,7 @@ class GameRenderer:
         self.header_bar = header_bar
         self.message_pane = message_pane
         self.async_manager = async_manager
+        self.inventory_display = InventoryDisplay(terminal)
         
     def render_initial_screen(self, game_map: GameMap, player: Player) -> None:
         """Render the initial game screen.
@@ -75,6 +77,11 @@ class GameRenderer:
             game_map.draw_player(self.terminal._term, player)
             self.header_bar.render()  # Only redraws if changed
             self.message_pane.render()  # Only redraws if changed
+        
+        # Render inventory overlay if visible
+        if self.inventory_display.visible:
+            inventory = player.get_component('Inventory')
+            self.inventory_display.render(inventory)
             
     def handle_level_change(self, game_map: GameMap, player: Player) -> None:
         """Handle rendering after a level change.
@@ -84,3 +91,9 @@ class GameRenderer:
             player: The player to render
         """
         self.render_full_redraw(game_map, player)
+    
+    def toggle_inventory(self) -> None:
+        """Toggle the inventory display."""
+        self.inventory_display.toggle()
+        # Force a full redraw to clear/show the overlay
+        self.async_manager.needs_full_redraw = True

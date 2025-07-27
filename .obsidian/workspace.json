@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "feature_status.md",
+                "file": "CONFIG_IMPLEMENTATION_SUMMARY.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "feature_status"
+              "title": "CONFIG_IMPLEMENTATION_SUMMARY"
             }
           }
         ]
@@ -171,21 +171,23 @@
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
     "deletefile.txt",
-    "test_connectivity.py",
-    "logs/magemines_20250727_072735.log",
-    "logs/magemines_20250727_072444.log",
-    "logs/magemines_20250727_072339.log",
-    "logs/magemines_20250727_071907.log",
-    "logs/magemines_20250727_071826.log",
-    "logs/magemines_20250727_070233.log",
-    "src/magemines/core/__pycache__/logging_config.cpython-312.pyc",
+    "logs/magemines_20250727_150248.log",
+    "src/magemines/ui/__pycache__/inventory_display.cpython-311.pyc",
+    "logs/magemines_20250727_150140.log",
+    "logs/magemines_20250727_145415.log",
     "nul",
-    "logs/magemines_20250727_065539.log",
+    "src/magemines/ui/__pycache__/inventory_display.cpython-312.pyc",
+    "test_inventory.py",
+    "src/magemines/ui/inventory_display.py",
+    "logs/magemines_20250727_143056.log",
+    "logs/magemines_20250727_143032.log",
+    "Untitled.canvas",
     "cleanup_report.md",
+    "CONFIG_IMPLEMENTATION_SUMMARY.md",
+    "feature_status.md",
     "CLAUDE.md",
     "docs/CONFIGURATION.md",
     "REVIEW1.md",
-    "CONFIG_IMPLEMENTATION_SUMMARY.md",
     "playtest.md"
   ]
 }

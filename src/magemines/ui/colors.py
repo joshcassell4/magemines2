@@ -98,19 +98,19 @@ class ColorPalette:
             '<': self.TERRAIN_STAIRS_UP,
             '>': self.TERRAIN_STAIRS_DOWN,
             '~': self.TERRAIN_WATER,
-            '≈': self.TERRAIN_LAVA,  # ≈ symbol
-            '□': self.TERRAIN_CHEST,  # □ symbol
-            '▲': self.TERRAIN_ALTAR,  # ▲ symbol
+            '%': self.TERRAIN_LAVA,  # lava
+            '$': self.TERRAIN_CHEST,  # chest
+            '^': self.TERRAIN_ALTAR,  # altar
         }
         
         self.resource_colors = {
             't': self.RESOURCE_WOOD,      # tree/wood
-            '*': self.RESOURCE_STONE,      # stone
+            's': self.RESOURCE_STONE,      # stone
             'o': self.RESOURCE_ORE,        # ore
-            '♦': self.RESOURCE_CRYSTAL,    # crystal
-            '◊': self.RESOURCE_ESSENCE,    # essence
-            '♠': (255, 140, 0),           # mushroom (orange)
-            '♣': (50, 205, 50),           # herbs (green)
+            '*': self.RESOURCE_CRYSTAL,    # crystal/gems
+            # Note: essence uses same symbol as crystal
+            'm': (255, 140, 0),           # mushroom (orange)
+            'h': (50, 205, 50),           # herbs (green)
         }
     
     def rgb(self, r: int, g: int, b: int) -> str:

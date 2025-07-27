@@ -84,19 +84,21 @@ class LoggingConfig:
             file_handler.setLevel(logging.DEBUG)  # Always log DEBUG to file
             root_logger.addHandler(file_handler)
             
-            # Also create a latest.log symlink/copy for easy access
+            # Create a second file handler for latest.log that mirrors the main log
             latest_log = log_dir / "latest.log"
             try:
+                # Remove old latest.log if it exists
                 if latest_log.exists():
                     latest_log.unlink()
-                # On Windows, we'll copy instead of symlink
-                if os.name == 'nt':
-                    import shutil
-                    shutil.copy2(log_file, latest_log)
-                else:
-                    latest_log.symlink_to(log_file.name)
-            except Exception:
-                pass  # Ignore symlink errors
+                    
+                # Create a new file handler for latest.log
+                latest_handler = logging.FileHandler(latest_log, mode='w')
+                latest_handler.setFormatter(formatter)
+                latest_handler.setLevel(logging.DEBUG)
+                root_logger.addHandler(latest_handler)
+            except Exception as e:
+                # If we can't create latest.log, just log to timestamped file
+                print(f"Warning: Could not create latest.log: {e}")
         
         cls._initialized = True
         
