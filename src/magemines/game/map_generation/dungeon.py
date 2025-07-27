@@ -129,6 +129,10 @@ class DungeonGenerator(MapGenerator):
         # Use corridor width from config, default to 1 for normal corridors
         corridor_width = self.config.corridor_width
         
+        # Ensure the starting and ending points are floor
+        self.set_tile(x1, y1, TileType.FLOOR)
+        self.set_tile(x2, y2, TileType.FLOOR)
+        
         # Randomly choose whether to go horizontal-first or vertical-first
         if random.random() < 0.5:
             # Horizontal then vertical
@@ -321,44 +325,19 @@ class DungeonGenerator(MapGenerator):
         
         self.debug_message(f"Carving corridor from room at ({cx1},{cy1}) to room at ({cx2},{cy2})")
         
-        # Use wider corridors temporarily for better connectivity
+        # Use wider corridors to ensure connectivity
         old_width = self.config.corridor_width
-        self.config.corridor_width = 2
+        self.config.corridor_width = 3  # Even wider for guaranteed connectivity
         
-        # Main corridor from center to center
+        # Simple but reliable: just connect the centers with a thick corridor
         if self.config.diagonal_corridors and random.random() < self.config.diagonal_chance:
             self._carve_diagonal_corridor(cx1, cy1, cx2, cy2)
         else:
             self._carve_simple_corridor(cx1, cy1, cx2, cy2)
         
-        # CRITICAL FIX: Ensure we connect directly to room floors
-        # Carve from room floor to corridor to guarantee connection
-        
-        # Find a floor tile in room1
-        room1_floor = None
-        for y in range(room1.y + 1, room1.y + room1.height - 1):
-            for x in range(room1.x + 1, room1.x + room1.width - 1):
-                if self.get_tile(x, y) == TileType.FLOOR:
-                    room1_floor = (x, y)
-                    break
-            if room1_floor:
-                break
-        
-        # Find a floor tile in room2
-        room2_floor = None
-        for y in range(room2.y + 1, room2.y + room2.height - 1):
-            for x in range(room2.x + 1, room2.x + room2.width - 1):
-                if self.get_tile(x, y) == TileType.FLOOR:
-                    room2_floor = (x, y)
-                    break
-            if room2_floor:
-                break
-        
-        # Carve paths from room floors to their centers to ensure connectivity
-        if room1_floor:
-            self._carve_simple_corridor(room1_floor[0], room1_floor[1], cx1, cy1)
-        if room2_floor:
-            self._carve_simple_corridor(room2_floor[0], room2_floor[1], cx2, cy2)
+        # Also ensure the centers themselves are floor (in case of very small rooms)
+        self.set_tile(cx1, cy1, TileType.FLOOR)
+        self.set_tile(cx2, cy2, TileType.FLOOR)
         
         self.config.corridor_width = old_width
         
@@ -410,10 +389,36 @@ class DungeonGenerator(MapGenerator):
             # Connect the closest rooms
             if best_room1_idx is not None and best_room2_idx is not None:
                 self.debug_message(f"Connecting component {0} to component {1}")
-                self._carve_reliable_corridor(
-                    self.rooms[best_room1_idx],
-                    self.rooms[best_room2_idx]
-                )
+                
+                # Use even wider corridors for forced connections
+                old_width = self.config.corridor_width
+                self.config.corridor_width = 5  # Very wide to ensure connectivity
+                
+                # Carve multiple paths to ensure connectivity
+                room1 = self.rooms[best_room1_idx]
+                room2 = self.rooms[best_room2_idx]
+                cx1, cy1 = room1.center()
+                cx2, cy2 = room2.center()
+                
+                # Carve primary corridor
+                self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                
+                # Also carve a backup corridor with different routing
+                # Use edges of rooms for more connection points
+                edge1_x = room1.x + 1 if cx1 > cx2 else room1.x + room1.width - 2
+                edge1_y = room1.y + room1.height // 2
+                edge2_x = room2.x + room2.width - 2 if cx1 > cx2 else room2.x + 1
+                edge2_y = room2.y + room2.height // 2
+                
+                self._carve_simple_corridor(edge1_x, edge1_y, edge2_x, edge2_y)
+                
+                self.config.corridor_width = old_width
+                
+                # If still not connected after double corridor, force direct connection
+                components_after = self._find_connected_components()
+                if len(components_after) >= len(components):
+                    self.debug_message("Double corridor failed, forcing aggressive connection", "warning")
+                    self._force_direct_connection(room1, room2)
             else:
                 self.debug_message("ERROR: Could not find rooms to connect!", "error")
                 break
@@ -423,6 +428,80 @@ class DungeonGenerator(MapGenerator):
         
         if len(components) > 1:
             self.debug_message(f"WARNING: Still have {len(components)} disconnected components after {attempts} attempts", "warning")
+    
+    def _force_direct_connection(self, room1: Room, room2: Room) -> None:
+        """Force a direct connection between two rooms by carving a thick path."""
+        self.debug_message("Forcing direct connection between rooms", "warning")
+        
+        cx1, cy1 = room1.center()
+        cx2, cy2 = room2.center()
+        
+        # Carve an extremely wide path to guarantee connectivity
+        # This is a last resort, so we don't care about aesthetics
+        old_width = self.config.corridor_width
+        self.config.corridor_width = 7  # Very wide corridor
+        
+        # First, carve from center to center
+        self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+        
+        # Also carve from multiple points in each room to ensure connectivity
+        # Use corners of the rooms
+        corners1 = [
+            (room1.x + 1, room1.y + 1),
+            (room1.x + room1.width - 2, room1.y + 1),
+            (room1.x + 1, room1.y + room1.height - 2),
+            (room1.x + room1.width - 2, room1.y + room1.height - 2)
+        ]
+        
+        corners2 = [
+            (room2.x + 1, room2.y + 1),
+            (room2.x + room2.width - 2, room2.y + 1),
+            (room2.x + 1, room2.y + room2.height - 2),
+            (room2.x + room2.width - 2, room2.y + room2.height - 2)
+        ]
+        
+        # Find closest corners
+        best_dist = float('inf')
+        best_c1 = corners1[0]
+        best_c2 = corners2[0]
+        
+        for c1 in corners1:
+            for c2 in corners2:
+                dist = abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])
+                if dist < best_dist:
+                    best_dist = dist
+                    best_c1 = c1
+                    best_c2 = c2
+        
+        # Carve corridor between closest corners
+        self._carve_simple_corridor(best_c1[0], best_c1[1], best_c2[0], best_c2[1])
+        
+        # Also directly carve a straight line of floor tiles as absolute fallback
+        # This ignores corridor functions and just ensures connectivity
+        dx = 1 if cx2 > cx1 else -1 if cx2 < cx1 else 0
+        dy = 1 if cy2 > cy1 else -1 if cy2 < cy1 else 0
+        
+        x, y = cx1, cy1
+        while x != cx2 or y != cy2:
+            # Carve a 3x3 area around current position
+            for dy2 in range(-3, 4):
+                for dx2 in range(-3, 4):
+                    if self.in_bounds(x + dx2, y + dy2):
+                        self.set_tile(x + dx2, y + dy2, TileType.FLOOR)
+            
+            # Move towards target
+            if x != cx2:
+                x += dx
+            if y != cy2:
+                y += dy
+        
+        # Ensure the destination is also carved out
+        for dy2 in range(-3, 4):
+            for dx2 in range(-3, 4):
+                if self.in_bounds(cx2 + dx2, cy2 + dy2):
+                    self.set_tile(cx2 + dx2, cy2 + dy2, TileType.FLOOR)
+        
+        self.config.corridor_width = old_width
     
     def _find_connected_components(self) -> List[List[int]]:
         """Find all connected components of rooms."""
@@ -470,26 +549,31 @@ class DungeonGenerator(MapGenerator):
             if (x, y) in visited_tiles or not self.in_bounds(x, y):
                 continue
             
-            if self.get_tile(x, y) not in [TileType.FLOOR, TileType.DOOR]:
+            if self.get_tile(x, y) not in [TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP, TileType.STAIRS_DOWN]:
                 continue
             
             visited_tiles.add((x, y))
             
             # Check which room this tile belongs to
+            # Only check floor tiles that are actually inside the room's floor area
             for i, room in enumerate(self.rooms):
-                if room.contains(x, y):
+                # Check if this is a floor tile inside the room's actual floor area (not walls)
+                if (x > room.x and x < room.x + room.width - 1 and
+                    y > room.y and y < room.y + room.height - 1):
                     reachable_rooms.add(i)
-                    break
             
-            # Add adjacent tiles
+            # Add adjacent tiles (only if not already visited)
             for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                queue.append((x + dx, y + dy))
+                next_pos = (x + dx, y + dy)
+                if next_pos not in visited_tiles:
+                    queue.append(next_pos)
     
     def _validate_connectivity(self) -> bool:
         """Validate that all rooms are connected."""
         if len(self.rooms) <= 1:
             return True
         
+        # First check using the component method
         components = self._find_connected_components()
         
         # Debug: log component information
@@ -510,10 +594,59 @@ class DungeonGenerator(MapGenerator):
             print(f"WARNING: Found {len(components)} disconnected components!")
             for i, comp in enumerate(components):
                 print(f"  Component {i}: {len(comp)} rooms")
+                
+            # Double-check with a simpler global flood fill
+            # This helps catch edge cases where our room detection might be off
+            reachable_count = self._count_reachable_rooms_global()
+            self.debug_message(f"Global flood fill found {reachable_count}/{len(self.rooms)} reachable rooms")
+            
+            if reachable_count == len(self.rooms):
+                self.debug_message("Global flood fill shows all rooms connected! Component detection may have issues.", "warning")
+                return True
         else:
             self.debug_message(f"All {len(self.rooms)} rooms are connected!")
         
         return len(components) == 1
+    
+    def _count_reachable_rooms_global(self) -> int:
+        """Count how many rooms are reachable from the first room using a global flood fill."""
+        if not self.rooms:
+            return 0
+            
+        # Start from the center of the first room
+        start_room = self.rooms[0]
+        start_x, start_y = start_room.center()
+        
+        visited = set()
+        reachable_rooms = set()
+        queue = deque([(start_x, start_y)])
+        
+        while queue:
+            x, y = queue.popleft()
+            
+            if (x, y) in visited or not self.in_bounds(x, y):
+                continue
+                
+            tile = self.get_tile(x, y)
+            if tile not in [TileType.FLOOR, TileType.DOOR, TileType.STAIRS_UP, TileType.STAIRS_DOWN]:
+                continue
+                
+            visited.add((x, y))
+            
+            # Check which room(s) this tile belongs to
+            for i, room in enumerate(self.rooms):
+                # Check if inside room's floor area
+                if (x > room.x and x < room.x + room.width - 1 and
+                    y > room.y and y < room.y + room.height - 1):
+                    reachable_rooms.add(i)
+            
+            # Add neighbors
+            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                next_pos = (x + dx, y + dy)
+                if next_pos not in visited:
+                    queue.append(next_pos)
+        
+        return len(reachable_rooms)
     
     def _place_room_doors(self) -> None:
         """Place doors at entrances to rooms marked for doors."""
