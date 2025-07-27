@@ -7,9 +7,16 @@ from ..ui.header_bar import HeaderBar
 from ..ui.loading_overlay import AsyncOperationManager, LoadingStyle
 from ..core.state import GameState, GamePhase
 from ..core.terminal import BlessedTerminal, Position, Color
+from ..core.config import get_config, ConfigSection
 
 
 def run_game():
+    # Load configuration
+    ui_config = get_config(ConfigSection.UI)
+    display_config = get_config(ConfigSection.DISPLAY)
+    game_config = get_config(ConfigSection.GAME)
+    debug_config = get_config(ConfigSection.DEBUG)
+    
     # Create terminal adapter first to get terminal dimensions
     terminal_adapter = BlessedTerminal()
     
@@ -24,8 +31,8 @@ def run_game():
         # Define layout - header bar at top, map and message pane below
         header_height = 1
         
-        # Fixed message pane width
-        message_pane_width = 40
+        # Use configured message pane width
+        message_pane_width = ui_config.message_pane_width
         message_pane_x = term_width - message_pane_width  # Flush with right side
         message_pane_height = term_height - header_height - 2
         
@@ -81,7 +88,7 @@ def run_game():
         
         # Clear screen and draw initial state
         terminal_adapter.clear()
-        header_bar.render()  # Draw header first
+        header_bar.render(force=True)  # Draw header first (force after clear)
         game_map.draw_static(terminal_adapter._term)  # Draw map once
         game_map.draw_player(terminal_adapter._term, player)
         message_pane.render()
@@ -133,7 +140,7 @@ def run_game():
             if async_manager.needs_full_redraw:
                 # Clear screen and redraw everything
                 terminal_adapter.clear()
-                header_bar.render()
+                header_bar.render(force=True)  # Force full redraw after clear
                 game_map.draw_static(terminal_adapter._term)
                 game_map.draw_player(terminal_adapter._term, player)
                 message_pane.force_full_redraw()  # Properly reset message pane
@@ -196,7 +203,7 @@ def run_game():
                 # Need to redraw the entire map
                 terminal_adapter.clear()
                 header_bar.set_stat("depth", "Depth", game_map.get_current_depth(), Color(100, 200, 255))
-                header_bar.render()
+                header_bar.render(force=True)  # Force full redraw after clear
                 game_map.draw_static(terminal_adapter._term)
                 game_map.draw_player(terminal_adapter._term, player)
                 message_pane.force_full_redraw()

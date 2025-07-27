@@ -1,0 +1,93 @@
+{
+  "message_pane_width": 40,
+  "message_pane_height": 8,
+  "message_history_size": 1000,
+  "message_categories": [
+    "system",
+    "info",
+    "warning",
+    "error",
+    "combat",
+    "magic",
+    "divine",
+    "dialogue",
+    "discovery"
+  ],
+  "color_scheme": {
+    "background": [
+      0,
+      0,
+      0
+    ],
+    "foreground": [
+      255,
+      255,
+      255
+    ],
+    "wall": [
+      128,
+      128,
+      128
+    ],
+    "floor": [
+      64,
+      64,
+      64
+    ],
+    "door_closed": [
+      139,
+      69,
+      19
+    ],
+    "door_open": [
+      160,
+      82,
+      45
+    ],
+    "water": [
+      0,
+      119,
+      190
+    ],
+    "lava": [
+      207,
+      16,
+      32
+    ],
+    "player": [
+      255,
+      255,
+      255
+    ],
+    "mage": [
+      100,
+      149,
+      237
+    ],
+    "monster": [
+      220,
+      20,
+      60
+    ],
+    "item": [
+      255,
+      215,
+      0
+    ],
+    "spell_effect": [
+      255,
+      255,
+      0
+    ]
+  },
+  "header_show_turn": true,
+  "header_show_depth": true,
+  "header_show_mana": true,
+  "header_show_fps": false,
+  "loading_spinner_speed": 0.1,
+  "loading_styles": [
+    "spinner",
+    "dots",
+    "progress_bar"
+  ]
+}

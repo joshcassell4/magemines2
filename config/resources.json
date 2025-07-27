@@ -1,0 +1,29 @@
+{
+  "resource_types": [
+    "wood",
+    "stone",
+    "iron",
+    "gold",
+    "crystal",
+    "herb",
+    "food"
+  ],
+  "resource_spawn_rates": {
+    "wood": 0.1,
+    "stone": 0.08,
+    "iron": 0.04,
+    "gold": 0.02,
+    "crystal": 0.01,
+    "herb": 0.06,
+    "food": 0.08
+  },
+  "resource_stack_sizes": {
+    "wood": 20,
+    "stone": 20,
+    "iron": 10,
+    "gold": 10,
+    "crystal": 5,
+    "herb": 30,
+    "food": 50
+  }
+}

@@ -2,6 +2,7 @@ from magemines.ui.colors import ColorPalette
 from .map_generator import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
 from .dungeon_level import DungeonLevel
+from ..core.config import get_config, ConfigSection
 
 
 class GameMap:
@@ -39,13 +40,16 @@ class GameMap:
     
     def _generate_procedural_map(self):
         """Generate a procedural dungeon map."""
+        # Load map generation configuration
+        map_config = get_config(ConfigSection.MAP_GENERATION)
+        
         # Create map generator with configuration
         config = MapGeneratorConfig(
             width=self.width,
             height=self.height,
-            min_room_size=4,
-            max_room_size=10,
-            max_rooms=15
+            min_room_size=map_config.min_room_size,
+            max_room_size=map_config.max_room_size,
+            max_rooms=map_config.max_rooms_base
         )
         
         # Generate the dungeon

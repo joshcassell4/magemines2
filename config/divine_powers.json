@@ -1,0 +1,23 @@
+{
+  "starting_divine_power": 100,
+  "divine_power_regen_rate": 0.5,
+  "divine_power_max": 1000,
+  "spell_costs": {
+    "heal": 20,
+    "smite": 30,
+    "inspire": 15,
+    "reveal": 10,
+    "terraform": 50,
+    "summon": 40,
+    "teleport": 25
+  },
+  "spell_cooldowns": {
+    "heal": 5,
+    "smite": 10,
+    "inspire": 20,
+    "reveal": 3,
+    "terraform": 50,
+    "summon": 30,
+    "teleport": 15
+  }
+}

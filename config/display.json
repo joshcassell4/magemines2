@@ -1,0 +1,10 @@
+{
+  "width": 80,
+  "height": 24,
+  "fullscreen": true,
+  "color_mode": "rgb",
+  "font_size": null,
+  "vsync": true,
+  "fps_limit": 60,
+  "show_fps": false
+}

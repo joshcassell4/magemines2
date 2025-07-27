@@ -11,10 +11,14 @@
             "id": "b2ebecd391d77fa4",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "CLAUDE.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "CLAUDE"
             }
           }
         ]
@@ -166,10 +170,21 @@
   },
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
+    "deletefile.txt",
+    "CONFIG_IMPLEMENTATION_SUMMARY.md",
+    "htmlcov/z_83ab1fc3ac257f21_config_py.html",
+    "tests/unit/__pycache__/test_config.cpython-312-pytest-8.4.1.pyc",
+    "examples/config_usage.py",
+    "examples",
+    "docs/CONFIGURATION.md",
+    "docs",
+    "REVIEW1.md",
+    "tests/unit/test_config.py",
+    "config/overrides.example.json",
+    "config/debug.json",
+    "config/performance.json",
+    "config/combat.json",
     "playtest.md",
-    "tests/unit/__pycache__/test_message_scrolling.cpython-311-pytest-8.4.1.pyc",
-    "tests/unit/__pycache__/test_loading_overlay.cpython-311-pytest-8.4.1.pyc",
-    "tests/unit/__pycache__/test_game_layout.cpython-311-pytest-8.4.1.pyc",
     "CLAUDE.md"
   ]
 }

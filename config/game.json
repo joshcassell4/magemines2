@@ -1,0 +1,8 @@
+{
+  "seed": null,
+  "difficulty": "normal",
+  "turn_duration_ms": 100,
+  "max_turns": null,
+  "autosave_interval": 100,
+  "autosave_enabled": true
+}

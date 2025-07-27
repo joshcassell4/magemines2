@@ -1,0 +1,20 @@
+{
+  "default_width": 80,
+  "default_height": 50,
+  "min_room_size": 4,
+  "max_room_size": 12,
+  "max_rooms_base": 20,
+  "rooms_per_level": 0.5,
+  "corridor_style": "l_shaped",
+  "corridor_width": 1,
+  "door_chance": 0.2,
+  "town_frequency": 5,
+  "cave_frequency": 5,
+  "cave_fill_probability": 0.45,
+  "cave_smoothing_iterations": 5,
+  "cave_neighbor_threshold": 4,
+  "town_building_min_size": 4,
+  "town_building_max_size": 8,
+  "town_street_width": 3,
+  "town_building_door_chance": 1.0
+}

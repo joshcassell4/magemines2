@@ -1,0 +1,12 @@
+{
+  "partial_rendering": true,
+  "dirty_rect_tracking": true,
+  "render_distance": 30,
+  "entity_update_budget_ms": 50,
+  "max_pathfinding_per_turn": 10,
+  "level_cache_size": 5,
+  "entity_pool_size": 1000,
+  "message_buffer_size": 1000,
+  "use_threading": false,
+  "worker_threads": 2
+}

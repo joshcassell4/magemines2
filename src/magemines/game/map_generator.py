@@ -208,18 +208,63 @@ class DungeonGenerator(MapGenerator):
         if hasattr(self, '_rooms_with_doors'):
             self._place_room_doors()
         
-        # Verify connectivity and fix if needed
+        # Verify connectivity and fix if needed - run twice for better results
         self._ensure_all_rooms_connected()
+        self._ensure_all_rooms_connected()  # Second pass to catch any missed connections
         
-        # Place stairs
+        # Place stairs - ensure they're in connected rooms
         if len(self.rooms) >= 2:
-            # Stairs up in first room
-            cx, cy = self.rooms[0].center()
-            self.set_tile(cx, cy, TileType.STAIRS_UP)
+            # Find the largest connected component after ensuring connectivity
+            visited = [[False for _ in range(self.width)] for _ in range(self.height)]
+            largest_component = []
             
-            # Stairs down in last room
-            cx, cy = self.rooms[-1].center()
-            self.set_tile(cx, cy, TileType.STAIRS_DOWN)
+            # Find a floor tile to start from
+            for room in self.rooms:
+                for y in range(room.y + 1, room.y + room.height - 1):
+                    for x in range(room.x + 1, room.x + room.width - 1):
+                        if self.get_tile(x, y) == TileType.FLOOR and not visited[y][x]:
+                            component = []
+                            self._flood_fill_rooms(x, y, visited, component)
+                            if len(component) > len(largest_component):
+                                largest_component = component
+            
+            # Place stairs in rooms from the largest component
+            if len(largest_component) >= 2:
+                # Stairs up in first connected room
+                room1 = self.rooms[largest_component[0]]
+                cx, cy = room1.center()
+                # Make sure center is floor
+                if self.get_tile(cx, cy) != TileType.FLOOR:
+                    # Find a floor tile in the room
+                    for y in range(room1.y + 1, room1.y + room1.height - 1):
+                        for x in range(room1.x + 1, room1.x + room1.width - 1):
+                            if self.get_tile(x, y) == TileType.FLOOR:
+                                cx, cy = x, y
+                                break
+                        if self.get_tile(cx, cy) == TileType.FLOOR:
+                            break
+                self.set_tile(cx, cy, TileType.STAIRS_UP)
+                
+                # Stairs down in last connected room
+                room2 = self.rooms[largest_component[-1]]
+                cx, cy = room2.center()
+                # Make sure center is floor
+                if self.get_tile(cx, cy) != TileType.FLOOR:
+                    # Find a floor tile in the room
+                    for y in range(room2.y + 1, room2.y + room2.height - 1):
+                        for x in range(room2.x + 1, room2.x + room2.width - 1):
+                            if self.get_tile(x, y) == TileType.FLOOR:
+                                cx, cy = x, y
+                                break
+                        if self.get_tile(cx, cy) == TileType.FLOOR:
+                            break
+                self.set_tile(cx, cy, TileType.STAIRS_DOWN)
+            else:
+                # Fallback - just use first two rooms
+                cx, cy = self.rooms[0].center()
+                self.set_tile(cx, cy, TileType.STAIRS_UP)
+                cx, cy = self.rooms[-1].center()
+                self.set_tile(cx, cy, TileType.STAIRS_DOWN)
     
     def _carve_room(self, room: Room) -> None:
         """Carve out a room."""
@@ -250,8 +295,8 @@ class DungeonGenerator(MapGenerator):
         
         This is a more robust implementation that ensures connectivity.
         """
-        # Use corridor width from config, but ensure at least 2 for connectivity
-        corridor_width = max(2, self.config.corridor_width)
+        # Use corridor width from config, default to 1 for normal corridors
+        corridor_width = self.config.corridor_width
         
         # Randomly choose whether to go horizontal-first or vertical-first
         if random.random() < 0.5:
@@ -259,7 +304,7 @@ class DungeonGenerator(MapGenerator):
             # Go from x1 to x2 along y1
             for x in range(min(x1, x2), max(x1, x2) + 1):
                 self.set_tile(x, y1, TileType.FLOOR)
-                # Make corridor wider
+                # Make corridor wider if requested
                 for dy in range(1, corridor_width):
                     if self.in_bounds(x, y1 + dy):
                         self.set_tile(x, y1 + dy, TileType.FLOOR)
@@ -268,7 +313,7 @@ class DungeonGenerator(MapGenerator):
             # Go from y1 to y2 along x2
             for y in range(min(y1, y2), max(y1, y2) + 1):
                 self.set_tile(x2, y, TileType.FLOOR)
-                # Make corridor wider
+                # Make corridor wider if requested
                 for dx in range(1, corridor_width):
                     if self.in_bounds(x2 + dx, y):
                         self.set_tile(x2 + dx, y, TileType.FLOOR)
@@ -279,7 +324,7 @@ class DungeonGenerator(MapGenerator):
             # Go from y1 to y2 along x1
             for y in range(min(y1, y2), max(y1, y2) + 1):
                 self.set_tile(x1, y, TileType.FLOOR)
-                # Make corridor wider
+                # Make corridor wider if requested
                 for dx in range(1, corridor_width):
                     if self.in_bounds(x1 + dx, y):
                         self.set_tile(x1 + dx, y, TileType.FLOOR)
@@ -288,7 +333,7 @@ class DungeonGenerator(MapGenerator):
             # Go from x1 to x2 along y2
             for x in range(min(x1, x2), max(x1, x2) + 1):
                 self.set_tile(x, y2, TileType.FLOOR)
-                # Make corridor wider
+                # Make corridor wider if requested
                 for dy in range(1, corridor_width):
                     if self.in_bounds(x, y2 + dy):
                         self.set_tile(x, y2 + dy, TileType.FLOOR)
@@ -503,6 +548,8 @@ class DungeonGenerator(MapGenerator):
         # Check if there's a corridor on one side and room floor on the other
         adjacent_floor = 0
         adjacent_wall = 0
+        has_room_floor = False
+        has_corridor_floor = False
         
         for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
             nx, ny = x + dx, y + dy
@@ -510,11 +557,17 @@ class DungeonGenerator(MapGenerator):
                 tile = self.get_tile(nx, ny)
                 if tile == TileType.FLOOR:
                     adjacent_floor += 1
+                    # Check if this floor is inside the room or outside (corridor)
+                    if room.contains(nx, ny):
+                        has_room_floor = True
+                    else:
+                        has_corridor_floor = True
                 elif tile == TileType.WALL:
                     adjacent_wall += 1
         
-        # Valid door position has floor on exactly 2 sides (corridor and room)
-        return adjacent_floor == 2
+        # Valid door position must connect room floor to corridor floor
+        # and have exactly 2 adjacent floor tiles
+        return adjacent_floor == 2 and has_room_floor and has_corridor_floor
     
     def _ensure_all_rooms_connected(self) -> None:
         """Verify all rooms are connected and add corridors if needed."""
@@ -525,13 +578,32 @@ class DungeonGenerator(MapGenerator):
         visited = [[False for _ in range(self.width)] for _ in range(self.height)]
         components = []
         
-        for room in self.rooms:
-            cx, cy = room.center()
-            if not visited[cy][cx]:
-                # Start a new component
-                component = []
-                self._flood_fill_rooms(cx, cy, visited, component)
-                components.append(component)
+        for i, room in enumerate(self.rooms):
+            # Check if this room has already been visited
+            already_visited = False
+            for comp in components:
+                if i in comp:
+                    already_visited = True
+                    break
+            
+            if not already_visited:
+                # Find a floor tile in this room to start from
+                start_x, start_y = None, None
+                for y in range(room.y + 1, room.y + room.height - 1):
+                    for x in range(room.x + 1, room.x + room.width - 1):
+                        if self.get_tile(x, y) == TileType.FLOOR:
+                            start_x, start_y = x, y
+                            break
+                    if start_x is not None:
+                        break
+                
+                if start_x is not None:
+                    # Start a new component
+                    component = []
+                    self._flood_fill_rooms(start_x, start_y, visited, component)
+                    if i not in component:
+                        component.append(i)  # Ensure this room is in its component
+                    components.append(component)
         
         # If there's more than one component, connect them
         if len(components) > 1:
@@ -562,8 +634,17 @@ class DungeonGenerator(MapGenerator):
                     cx1, cy1 = best_room1.center()
                     cx2, cy2 = best_room2.center()
                     
-                    # Use simple corridor for reliability
+                    # Use wider corridors for better connectivity
+                    old_width = self.config.corridor_width
+                    self.config.corridor_width = 2  # Temporarily use wider corridors
+                    
+                    # Carve corridor twice with slight offset for reliability
                     self._carve_simple_corridor(cx1, cy1, cx2, cy2)
+                    # Try alternate path too
+                    if abs(cx1 - cx2) > 2 and abs(cy1 - cy2) > 2:
+                        self._carve_simple_corridor(cx1 + 1, cy1, cx2, cy2 + 1)
+                    
+                    self.config.corridor_width = old_width  # Restore original width
                     
                     # Merge this component into main
                     main_component.extend(components[i])
