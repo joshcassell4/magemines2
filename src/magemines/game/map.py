@@ -1,5 +1,5 @@
 from magemines.ui.colors import ColorPalette
-from .map_generator import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
+from .map_generation import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
 from .dungeon_level import DungeonLevel
 from ..core.config import get_config, ConfigSection

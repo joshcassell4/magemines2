@@ -186,7 +186,7 @@ MageMines is a terminal-based god-game combining elements from Dwarf Fortress, D
   - [ ] Conversation history
 
 ### Phase 7: Resources & Crafting
-**Status**: Not Started  
+**Status**: In Progress ⚡ **STARTED** (2025-07-27)
 **Target**: Week 9
 
 - [ ] Resource types

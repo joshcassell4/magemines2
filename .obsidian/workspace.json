@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CLAUDE.md",
+                "file": "feature_status.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CLAUDE"
+              "title": "feature_status"
             }
           }
         ]
@@ -170,21 +170,21 @@
   },
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
-    "deletefile.txt",
-    "CONFIG_IMPLEMENTATION_SUMMARY.md",
-    "htmlcov/z_83ab1fc3ac257f21_config_py.html",
-    "tests/unit/__pycache__/test_config.cpython-312-pytest-8.4.1.pyc",
-    "examples/config_usage.py",
-    "examples",
+    "src/magemines/ui/__pycache__/layout_manager.cpython-312.pyc",
+    "src/magemines/game/__pycache__/game_renderer.cpython-312.pyc",
+    "src/magemines/game/__pycache__/demo_handler.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/factory.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/town.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/cave.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/corridor.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/room.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/dungeon.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/__init__.cpython-312.pyc",
+    "src/magemines/game/map_generation/__pycache__/base.cpython-312.pyc",
+    "CLAUDE.md",
     "docs/CONFIGURATION.md",
-    "docs",
     "REVIEW1.md",
-    "tests/unit/test_config.py",
-    "config/overrides.example.json",
-    "config/debug.json",
-    "config/performance.json",
-    "config/combat.json",
-    "playtest.md",
-    "CLAUDE.md"
+    "CONFIG_IMPLEMENTATION_SUMMARY.md",
+    "playtest.md"
   ]
 }
