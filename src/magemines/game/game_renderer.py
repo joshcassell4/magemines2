@@ -7,6 +7,7 @@ from ..ui.header_bar import HeaderBar
 from ..ui.message_pane import MessagePane
 from ..ui.loading_overlay import AsyncOperationManager
 from ..ui.inventory_display import InventoryDisplay
+from ..ui.message_log_viewer import MessageLogViewer
 from ..core.terminal import BlessedTerminal
 
 
@@ -28,6 +29,7 @@ class GameRenderer:
         self.message_pane = message_pane
         self.async_manager = async_manager
         self.inventory_display = InventoryDisplay(terminal)
+        self.message_log_viewer = MessageLogViewer(terminal)
         
     def render_initial_screen(self, game_map: GameMap, player: Player) -> None:
         """Render the initial game screen.
@@ -39,6 +41,7 @@ class GameRenderer:
         self.terminal.clear()
         self.header_bar.render(force=True)
         game_map.draw_static(self.terminal._term)
+        game_map.draw_entities(self.terminal._term)
         game_map.draw_player(self.terminal._term, player)
         self.message_pane.render()
         
@@ -52,6 +55,7 @@ class GameRenderer:
         self.terminal.clear()
         self.header_bar.render(force=True)
         game_map.draw_static(self.terminal._term)
+        game_map.draw_entities(self.terminal._term)
         game_map.draw_player(self.terminal._term, player)
         self.message_pane.force_full_redraw()
         self.message_pane.render()
@@ -74,6 +78,8 @@ class GameRenderer:
             self.async_manager.needs_full_redraw = False
         elif not did_full_redraw:
             # Normal frame update - only redraw changed elements
+            # TODO: Optimize entity rendering to only redraw moved entities
+            game_map.draw_entities(self.terminal._term)
             game_map.draw_player(self.terminal._term, player)
             self.header_bar.render()  # Only redraws if changed
             self.message_pane.render()  # Only redraws if changed
@@ -88,6 +94,11 @@ class GameRenderer:
             logger.debug(f"Got inventory component: {inventory}")
             self.inventory_display.render(inventory)
             
+        # Render message log viewer if visible
+        if self.message_log_viewer.visible:
+            self.message_log_viewer.set_messages(self.message_pane.messages)
+            self.message_log_viewer.render()
+            
     def handle_level_change(self, game_map: GameMap, player: Player) -> None:
         """Handle rendering after a level change.
         
@@ -101,6 +112,14 @@ class GameRenderer:
         """Toggle the inventory display."""
         was_visible = self.inventory_display.visible
         self.inventory_display.toggle()
+        # Force a full redraw when hiding to clear the overlay
+        if was_visible:
+            self.async_manager.needs_full_redraw = True
+            
+    def toggle_message_log(self) -> None:
+        """Toggle the message log viewer."""
+        was_visible = self.message_log_viewer.visible
+        self.message_log_viewer.toggle()
         # Force a full redraw when hiding to clear the overlay
         if was_visible:
             self.async_manager.needs_full_redraw = True

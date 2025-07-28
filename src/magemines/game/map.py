@@ -1,8 +1,11 @@
 import logging
+from typing import Optional, List, Dict, Tuple
 from magemines.ui.colors import ColorPalette
 from .map_generation import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
 from .dungeon_level import DungeonLevel
+from .entities import Entity, EntityManager
+from .components import Position
 from ..core.config import get_config, ConfigSection
 
 
@@ -19,6 +22,10 @@ class GameMap:
         self.level_manager = None  # For multi-level dungeons
         self.use_levels = use_levels
         self.message_pane = None  # Will be set later if available
+        
+        # Entity management
+        self.entity_manager = EntityManager()
+        self.entity_positions: Dict[Tuple[int, int], List[int]] = {}  # (x,y) -> [entity_ids]
         
         self.logger.info(f"Creating GameMap: {width}x{height}, use_levels={use_levels}, use_procedural={use_procedural}")
         
@@ -132,9 +139,15 @@ class GameMap:
         # Apply both x and y offsets
         print(self.color_palette.render_colored_char(tile, player.x + self.x_offset, player.y + self.y_offset), end='', flush=True)
 
-    def is_blocked(self, x, y):
+    def is_blocked(self, x, y, ignore_entity_id=None):
         # Walls and closed doors block movement
-        return self.tiles[y][x] in ['#', '+']
+        if self.tiles[y][x] in ['#', '+']:
+            return True
+        # Check if blocked by entity (but ignore a specific entity if provided)
+        entities = self.get_entities_at(x, y)
+        if ignore_entity_id:
+            entities = [e for e in entities if e.id != ignore_entity_id]
+        return len(entities) > 0
     
     def get_starting_position(self):
         """Get a suitable starting position for the player.
@@ -228,3 +241,110 @@ class GameMap:
                 self.tiles[y][x] = '.'  # Convert door to floor
                 return True
         return False
+    
+    # Entity management methods
+    def add_entity(self, entity: Entity):
+        """Add an entity to the map."""
+        self.entity_manager.add_entity(entity)
+        
+        # Track position
+        pos = entity.get_component(Position)
+        if pos:
+            self._update_entity_position(entity.id, None, (pos.x, pos.y))
+    
+    def remove_entity(self, entity_id: int):
+        """Remove an entity from the map."""
+        entity = self.entity_manager.get_entity(entity_id)
+        if entity:
+            pos = entity.get_component(Position)
+            if pos:
+                self._update_entity_position(entity_id, (pos.x, pos.y), None)
+        
+        self.entity_manager.remove_entity(entity_id)
+    
+    def move_entity(self, entity: Entity, new_x: int, new_y: int):
+        """Move an entity to a new position."""
+        pos = entity.get_component(Position)
+        if pos:
+            old_pos = (pos.x, pos.y)
+            pos.x = new_x
+            pos.y = new_y
+            self._update_entity_position(entity.id, old_pos, (new_x, new_y))
+    
+    def get_entities_at(self, x: int, y: int) -> List[Entity]:
+        """Get all entities at a specific position."""
+        entity_ids = self.entity_positions.get((x, y), [])
+        return [self.entity_manager.get_entity(eid) for eid in entity_ids if self.entity_manager.get_entity(eid)]
+    
+    def get_blocking_entity_at(self, x: int, y: int) -> Optional[Entity]:
+        """Get the first blocking entity at a position (for collision detection)."""
+        entities = self.get_entities_at(x, y)
+        # For now, all entities block movement
+        return entities[0] if entities else None
+    
+    def is_blocked_by_entity(self, x: int, y: int) -> bool:
+        """Check if a position is blocked by an entity."""
+        return len(self.entity_positions.get((x, y), [])) > 0
+    
+    def open_door(self, x: int, y: int) -> bool:
+        """Open a door at the given position."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            if self.tiles[y][x] == '+':
+                self.tiles[y][x] = '.'
+                return True
+        return False
+    
+    def remove_resource(self, x: int, y: int) -> bool:
+        """Remove a resource from the map."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            resource_tiles = ['t', 's', 'o', '*', 'm', 'h']
+            if self.tiles[y][x] in resource_tiles:
+                self.tiles[y][x] = '.'
+                return True
+        return False
+    
+    def _update_entity_position(self, entity_id: int, old_pos: Optional[Tuple[int, int]], 
+                               new_pos: Optional[Tuple[int, int]]):
+        """Update entity position tracking."""
+        # Remove from old position
+        if old_pos:
+            if old_pos in self.entity_positions:
+                if entity_id in self.entity_positions[old_pos]:
+                    self.entity_positions[old_pos].remove(entity_id)
+                if not self.entity_positions[old_pos]:
+                    del self.entity_positions[old_pos]
+        
+        # Add to new position
+        if new_pos:
+            if new_pos not in self.entity_positions:
+                self.entity_positions[new_pos] = []
+            self.entity_positions[new_pos].append(entity_id)
+    
+    def draw_entities(self, term):
+        """Draw all entities on the map."""
+        if self.color_palette is None:
+            self.set_color_palette(term)
+        
+        # Draw all entities
+        entities = self.entity_manager.get_entities_with_component(Position)
+        for entity in entities:
+            pos = entity.get_component(Position)
+            renderable = entity.renderable
+            
+            if pos and renderable:
+                # Only draw if within map bounds
+                if 0 <= pos.x < self.width and 0 <= pos.y < self.height:
+                    # Apply offsets and draw
+                    screen_x = pos.x + self.x_offset
+                    screen_y = pos.y + self.y_offset
+                    
+                    # Use entity's color if available
+                    if hasattr(renderable, 'color'):
+                        print(term.move(screen_y, screen_x) + 
+                              term.color_rgb(*renderable.color) + 
+                              renderable.char + 
+                              term.normal, end='', flush=True)
+                    else:
+                        print(self.color_palette.render_colored_char(
+                            renderable.char, pos.x + self.x_offset, 
+                            pos.y + self.y_offset), end='', flush=True)

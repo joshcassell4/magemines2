@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CONFIG_IMPLEMENTATION_SUMMARY.md",
+                "file": "PERFORMANCE.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CONFIG_IMPLEMENTATION_SUMMARY"
+              "title": "PERFORMANCE"
             }
           }
         ]
@@ -170,24 +170,25 @@
   },
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
-    "logs/magemines_20250727_162831.log",
-    "logs/magemines_20250727_162747.log",
-    "test_inventory_redraw.py",
-    "logs/magemines_20250727_162405.log",
-    "test_inventory_fixed.py",
-    "logs/magemines_20250727_162257.log",
-    "logs/magemines_20250727_162056.log",
-    "test_inventory_display.py",
-    "logs/magemines_20250727_161756.log",
-    "logs/magemines_20250727_161353.log",
-    "deletefile.txt",
+    "src/magemines/game/optimized_map.py",
+    "src/magemines/ui/message_log_viewer.py",
+    "src/magemines/core/performance.py",
+    "docs/CONFIGURATION.md",
+    "PERFORMANCE.md",
+    "playtest.md",
+    "src/magemines/game/systems/__init__.py",
+    "src/magemines/game/systems/ai_system.py",
+    "src/magemines/game/systems",
+    "src/magemines/game/data/__init__.py",
+    "src/magemines/game/entities/__init__.py",
+    "src/magemines/game/entities/mages.py",
+    "src/magemines/game/entities",
+    "src/magemines/game/data/spells.py",
+    "CONFIG_IMPLEMENTATION_SUMMARY.md",
     "Untitled.canvas",
     "cleanup_report.md",
-    "CONFIG_IMPLEMENTATION_SUMMARY.md",
     "feature_status.md",
     "CLAUDE.md",
-    "docs/CONFIGURATION.md",
-    "REVIEW1.md",
-    "playtest.md"
+    "REVIEW1.md"
   ]
 }

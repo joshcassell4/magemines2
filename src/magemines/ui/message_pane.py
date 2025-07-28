@@ -202,6 +202,10 @@ class MessagePane:
         self._needs_full_redraw = True
         self._border_drawn = False
         
+        # Performance mode: only show current turn messages by default
+        self._show_current_turn_only = True
+        self._viewing_history = False  # True when user is scrolling through history
+        
         # Subscribe to message events if event bus provided
         if self._event_bus:
             self._event_bus.subscribe(EventType.MESSAGE, self._handle_message_event)
@@ -230,9 +234,22 @@ class MessagePane:
         # Always reset scroll to show new message
         self.scroll_offset = 0
         
+        # Exit history mode when new message arrives
+        self._viewing_history = False
+        self._show_current_turn_only = True
+        
         # Invalidate cache when new message added
         self._wrapped_cache = None
         self._needs_full_redraw = True
+        
+    def set_current_turn(self, turn: int) -> None:
+        """Update the current turn number."""
+        if turn != self._current_turn:
+            self._current_turn = turn
+            # Invalidate cache when turn changes
+            if self._show_current_turn_only:
+                self._wrapped_cache = None
+                self._needs_full_redraw = True
     
     def set_filter(self, filter: Optional[MessageFilter]) -> None:
         """Set message filter."""
@@ -244,6 +261,13 @@ class MessagePane:
     def scroll(self, direction: ScrollDirection, lines: int = 1) -> None:
         """Scroll the message view."""
         old_offset = self.scroll_offset
+        
+        # When user scrolls, enter history viewing mode
+        if self.scroll_offset == 0 and direction == ScrollDirection.UP:
+            self._viewing_history = True
+            self._show_current_turn_only = False
+            self._wrapped_cache = None  # Force recalculation with all messages
+            
         if direction == ScrollDirection.UP:
             self.scroll_offset = min(
                 self.scroll_offset + lines,
@@ -251,6 +275,12 @@ class MessagePane:
             )
         else:  # DOWN
             self.scroll_offset = max(0, self.scroll_offset - lines)
+            
+        # If scrolled back to bottom, exit history mode
+        if self.scroll_offset == 0:
+            self._viewing_history = False
+            self._show_current_turn_only = True
+            self._wrapped_cache = None  # Force recalculation with current turn only
         
         # Only trigger redraw if scroll actually changed
         if old_offset != self.scroll_offset:
@@ -422,6 +452,11 @@ class MessagePane:
     def _get_visible_messages(self) -> List[Message]:
         """Get messages that should be visible (after filtering)."""
         messages = self.messages
+        
+        # Apply turn filter for performance mode
+        if self._show_current_turn_only and not self._viewing_history:
+            # Only show messages from current turn (and system messages)
+            messages = [m for m in messages if m.turn == self._current_turn or m.category == MessageCategory.SYSTEM]
         
         if self._filter:
             messages = self._filter.apply(messages)

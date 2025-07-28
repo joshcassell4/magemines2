@@ -24,3 +24,6 @@ tests/debug_*.py
 tests/test_*_debug.py
 tests/test_*_fixes.py
 tests/test_*_issue*.py
+
+# Obsidian metadata
+.obsidian/
