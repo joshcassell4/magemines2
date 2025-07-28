@@ -170,6 +170,8 @@
   },
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
+    "logs/magemines_20250727_163743.log",
+    "logs/magemines_20250727_163357.log",
     "logs/magemines_20250727_162831.log",
     "logs/magemines_20250727_162747.log",
     "test_inventory_redraw.py",
@@ -179,8 +181,6 @@
     "logs/magemines_20250727_162056.log",
     "test_inventory_display.py",
     "logs/magemines_20250727_161756.log",
-    "logs/magemines_20250727_161353.log",
-    "deletefile.txt",
     "Untitled.canvas",
     "cleanup_report.md",
     "CONFIG_IMPLEMENTATION_SUMMARY.md",

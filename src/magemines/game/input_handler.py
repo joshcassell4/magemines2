@@ -433,6 +433,7 @@ class InputHandler:
         """Handle gathering resources."""
         from ..game.resources import ResourceType, RESOURCE_PROPERTIES
         from ..game.map_generation import TileType
+        from ..game.components import Gatherer, Inventory
         
         self.logger.debug(f"_handle_gather called at position ({player.x}, {player.y})")
         
@@ -482,7 +483,13 @@ class InputHandler:
         props = RESOURCE_PROPERTIES[resource_type]
         
         # Check if player has required tool
-        gatherer = player.get_component('Gatherer')
+        gatherer = player.get_component(Gatherer)
+        self.logger.debug(f"Gatherer component: {gatherer}")
+        self.logger.debug(f"Tool required: {props.tool_required}")
+        if gatherer:
+            self.logger.debug(f"Player tools: {gatherer.tools}")
+            self.logger.debug(f"Can gather: {gatherer.can_gather(props.tool_required)}")
+        
         if gatherer and not gatherer.can_gather(props.tool_required):
             if self._message_pane:
                 self._message_pane.add_message(
@@ -496,7 +503,7 @@ class InputHandler:
         yield_amount = random.randint(props.min_yield, props.max_yield)
         
         # Add to inventory
-        inventory = player.get_component('Inventory')
+        inventory = player.get_component(Inventory)
         if inventory:
             overflow = inventory.add_resource(resource_type, yield_amount)
             
