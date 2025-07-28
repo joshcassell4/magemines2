@@ -219,3 +219,155 @@ class Stats(Component):
     def carrying_capacity(self) -> int:
         """Extra inventory slots based on strength."""
         return max(0, (self.strength - 10) // 2)
+    
+    @property
+    def max_mana(self) -> int:
+        """Maximum mana based on intelligence and wisdom."""
+        return 10 + (self.intelligence - 10) * 2 + (self.wisdom - 10)
+    
+    @property
+    def spell_power(self) -> float:
+        """Spell damage/healing multiplier based on intelligence."""
+        return 1.0 + (self.intelligence - 10) * 0.1
+    
+    @property
+    def mana_regen_rate(self) -> float:
+        """Mana regeneration per turn based on wisdom."""
+        return 1.0 + (self.wisdom - 10) * 0.05
+
+
+@dataclass
+class MagicUser(Component):
+    """Component for entities that can use magic."""
+    current_mana: int = 10
+    max_mana: int = 10
+    known_spells: List[str] = field(default_factory=list)  # Spell IDs
+    magic_school: str = "arcane"  # arcane, elemental, divine, nature
+    spell_cooldowns: Dict[str, int] = field(default_factory=dict)  # spell_id -> turns remaining
+    casting_spell: Optional[str] = None  # Currently casting spell ID
+    cast_progress: int = 0  # Turns spent casting current spell
+    
+    def can_cast(self, spell_id: str, mana_cost: int) -> bool:
+        """Check if the entity can cast a spell."""
+        return (self.current_mana >= mana_cost and 
+                spell_id in self.known_spells and
+                self.spell_cooldowns.get(spell_id, 0) <= 0 and
+                self.casting_spell is None)
+    
+    def start_casting(self, spell_id: str):
+        """Start casting a spell."""
+        self.casting_spell = spell_id
+        self.cast_progress = 0
+    
+    def finish_casting(self, spell_id: str, cooldown: int):
+        """Finish casting a spell and apply cooldown."""
+        self.casting_spell = None
+        self.cast_progress = 0
+        if cooldown > 0:
+            self.spell_cooldowns[spell_id] = cooldown
+    
+    def spend_mana(self, amount: int):
+        """Spend mana, returns True if successful."""
+        if self.current_mana >= amount:
+            self.current_mana -= amount
+            return True
+        return False
+    
+    def regenerate_mana(self, amount: float):
+        """Regenerate mana up to maximum."""
+        self.current_mana = min(self.max_mana, int(self.current_mana + amount))
+    
+    def update_cooldowns(self):
+        """Reduce all cooldowns by 1 turn."""
+        for spell_id in list(self.spell_cooldowns.keys()):
+            self.spell_cooldowns[spell_id] -= 1
+            if self.spell_cooldowns[spell_id] <= 0:
+                del self.spell_cooldowns[spell_id]
+
+
+@dataclass
+class Spell(Component):
+    """Spell definition component (attached to spell entities)."""
+    spell_id: str
+    name: str
+    description: str
+    mana_cost: int
+    range: int  # 0 = self, 1 = melee, 2+ = ranged
+    area_of_effect: int = 0  # 0 = single target, 1+ = radius
+    effect_type: str = "damage"  # damage, heal, buff, debuff, summon, utility
+    effect_value: int = 10  # Base damage/healing/duration
+    cast_time: int = 1  # Turns to cast (1 = instant)
+    cooldown: int = 0  # Turns before can cast again
+    school: str = "arcane"  # Magic school requirement
+    
+    @property
+    def is_instant(self) -> bool:
+        """Check if spell casts instantly."""
+        return self.cast_time <= 1
+    
+    @property
+    def is_self_cast(self) -> bool:
+        """Check if spell can only target self."""
+        return self.range == 0
+    
+    @property
+    def is_area_effect(self) -> bool:
+        """Check if spell affects an area."""
+        return self.area_of_effect > 0
+
+
+@dataclass
+class MagicEffect(Component):
+    """Active magical effect on an entity."""
+    effect_id: str
+    name: str
+    effect_type: str  # buff, debuff, dot, hot, shield
+    remaining_duration: int  # Turns remaining
+    strength: int  # Effect strength/power
+    source_entity_id: Optional[int] = None  # Who cast this effect
+    
+    def tick(self) -> bool:
+        """
+        Process one turn of the effect.
+        Returns True if effect should continue, False if expired.
+        """
+        self.remaining_duration -= 1
+        return self.remaining_duration > 0
+    
+    @property
+    def is_beneficial(self) -> bool:
+        """Check if this is a beneficial effect."""
+        return self.effect_type in ["buff", "hot", "shield"]
+    
+    @property
+    def is_harmful(self) -> bool:
+        """Check if this is a harmful effect."""
+        return self.effect_type in ["debuff", "dot"]
+
+
+@dataclass 
+class Faction(Component):
+    """Faction alignment and reputation component."""
+    faction_id: str  # ancient_order, rogue_mages, neutral_scholars, mad_hermits
+    reputation: Dict[str, int] = field(default_factory=dict)  # entity_id -> reputation value
+    base_hostility: int = 0  # -100 (peaceful) to 100 (hostile)
+    
+    def get_reputation(self, entity_id: int) -> int:
+        """Get reputation with a specific entity."""
+        return self.reputation.get(str(entity_id), 0)
+    
+    def modify_reputation(self, entity_id: int, amount: int):
+        """Modify reputation with a specific entity."""
+        entity_key = str(entity_id)
+        current = self.reputation.get(entity_key, 0)
+        self.reputation[entity_key] = max(-100, min(100, current + amount))
+    
+    def is_hostile_to(self, entity_id: int) -> bool:
+        """Check if hostile to a specific entity."""
+        rep = self.get_reputation(entity_id)
+        return self.base_hostility + rep > 25
+    
+    def is_friendly_to(self, entity_id: int) -> bool:
+        """Check if friendly to a specific entity."""
+        rep = self.get_reputation(entity_id)
+        return self.base_hostility + rep < -25

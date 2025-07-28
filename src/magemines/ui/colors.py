@@ -200,6 +200,24 @@ class ColorPalette:
         rgb = category_colors.get(category, self.MSG_SYSTEM)
         return Color(*rgb)
     
+    def get_color_for_char(self, char: str) -> Optional[Tuple[int, int, int]]:
+        """Get the RGB color tuple for a character.
+        
+        Args:
+            char: Character to get color for
+            
+        Returns:
+            RGB color tuple or None if no specific color
+        """
+        if char in self.entity_colors:
+            return self.entity_colors[char]
+        elif char in self.terrain_colors:
+            return self.terrain_colors[char]
+        elif char in self.resource_colors:
+            return self.resource_colors[char]
+        else:
+            return self.UI_TEXT
+    
     def render_colored_char(self, char: str, x: int, y: int,
                            fg_color: Optional[Tuple[int, int, int]] = None,
                            bg_color: Optional[Tuple[int, int, int]] = None) -> str:

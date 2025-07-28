@@ -1,9 +1,11 @@
 import logging
-from .map import GameMap
+from .optimized_map import OptimizedGameMap
 from .player import Player
 from .input_handler import InputHandler
 from .demo_handler import DemoHandler
 from .game_renderer import GameRenderer
+from .systems import AISystem
+from .entities import create_mage
 from ..ui.message_pane import MessagePane, MessageCategory
 from ..ui.header_bar import HeaderBar
 from ..ui.loading_overlay import AsyncOperationManager, LoadingStyle
@@ -58,7 +60,7 @@ def run_game():
         
         # Create game components with appropriate sizes
         # Enable multi-level dungeons
-        game_map = GameMap(
+        game_map = OptimizedGameMap(
             layout.map_width, 
             layout.map_height, 
             x_offset=layout.map_position.x, 
@@ -73,18 +75,29 @@ def run_game():
         game_state.phase = GamePhase.PLAYING
         input_handler = InputHandler()
         
-        # Create async operation manager for loading indicators
-        async_manager = AsyncOperationManager(terminal_adapter)
+        # Add player to entity manager
+        game_map.add_entity(player)
         
-        # Create message pane on the right side of the screen, below header
+        # Create AI system
+        ai_system = AISystem(game_map.entity_manager, game_map)
+        
+        # Create message pane early so spawn_test_mages can use it
         message_pane = MessagePane(
             terminal_adapter, 
             layout.message_position, 
             layout.message_width, 
             layout.message_height
         )
+        
+        # Spawn some test mages
+        spawn_test_mages(game_map, message_pane)
+        
+        # Create async operation manager for loading indicators
+        async_manager = AsyncOperationManager(terminal_adapter)
+        
+        # Set message pane for input handler
         input_handler.set_message_pane(message_pane)
-        message_pane._current_turn = game_state.turn.turn_number
+        message_pane.set_current_turn(game_state.turn.turn_number)
         
         # Pass message pane to game map for debug output
         game_map.set_message_pane(message_pane)
@@ -131,6 +144,11 @@ def run_game():
             if demo_handler.handle_key(str(key)):
                 continue
                 
+            # Handle message log viewer keys if it's visible
+            if renderer.message_log_viewer.visible:
+                if renderer.message_log_viewer.handle_key(str(key)):
+                    continue
+                
             # Clear player from old position
             game_map.clear_player(terminal_adapter._term, player)
             
@@ -151,11 +169,19 @@ def run_game():
                 renderer.toggle_inventory()
                 did_full_redraw = True
             
+            # Handle message log toggle
+            if result == "SHOW_MESSAGE_LOG":
+                renderer.toggle_message_log()
+                did_full_redraw = True
+            
             # Update turn counter if action was taken
-            if result and result not in ["SCROLL", "LEVEL_CHANGE"]:
+            if result and result not in ["SCROLL", "LEVEL_CHANGE", "SHOW_INVENTORY", "SHOW_MESSAGE_LOG"]:
                 game_state.turn.turn_number += 1
-                message_pane._current_turn = game_state.turn.turn_number
+                message_pane.set_current_turn(game_state.turn.turn_number)
                 header_bar.set_stat("turn", "Turn", game_state.turn.turn_number, Color(255, 255, 100))
+                
+                # Process AI turns
+                ai_system.process_turn(player)
             
             # Render frame
             renderer.render_frame(game_map, player, did_full_redraw)
@@ -179,5 +205,54 @@ def add_welcome_messages(message_pane: MessagePane, current_depth: int) -> None:
     message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
     message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather), i (inventory)", MessageCategory.SYSTEM)
     message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM)
-    message_pane.add_message("Messages: -/+ to scroll", MessageCategory.SYSTEM)
+    message_pane.add_message("Messages: -/+ to scroll, L (view full log)", MessageCategory.SYSTEM)
     message_pane.add_message(f"You are on level {current_depth}", MessageCategory.INFO)
+
+
+def spawn_test_mages(game_map, message_pane):
+    """Spawn some test mages on the map."""
+    import random
+    from ..game.components import Name
+    
+    # Try to spawn a few mages in empty positions
+    mage_types = ["apprentice", "elemental", "scholar", "hermit"]
+    
+    for i in range(3):  # Spawn 3 mages
+        # Find an empty position
+        attempts = 0
+        while attempts < 50:
+            x = random.randint(1, game_map.width - 2)
+            y = random.randint(1, game_map.height - 2)
+            
+            # Check if position is empty
+            if (game_map.get_tile_at(x, y) == '.' and 
+                not game_map.is_blocked_by_entity(x, y)):
+                
+                # Create a mage
+                mage_type = random.choice(mage_types)
+                entity_id = game_map.entity_manager.next_id
+                
+                # Special handling for elemental mages
+                if mage_type == "elemental":
+                    element = random.choice(["fire", "ice", "lightning"])
+                    mage = create_mage(mage_type, entity_id, x, y, element=element)
+                else:
+                    mage = create_mage(mage_type, entity_id, x, y)
+                
+                if mage:
+                    game_map.add_entity(mage)
+                    
+                    # Get mage name for message
+                    name_comp = mage.get_component(Name)
+                    mage_name = name_comp.full_name if name_comp else f"{mage_type} mage"
+                    
+                    message_pane.add_message(
+                        f"A {mage_name} appears in the dungeon!",
+                        MessageCategory.INFO
+                    )
+                    
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Spawned {mage_type} mage at ({x}, {y})")
+                break
+            
+            attempts += 1

@@ -39,6 +39,7 @@ class InputAction(Enum):
     
     # UI
     SHOW_INVENTORY = auto()
+    SHOW_MESSAGE_LOG = auto()
     
     UNKNOWN = auto()
 
@@ -92,6 +93,7 @@ class InputHandler:
             # UI
             'i': InputAction.SHOW_INVENTORY,
             'I': InputAction.SHOW_INVENTORY,
+            'L': InputAction.SHOW_MESSAGE_LOG,  # Capital L for message log
         }
         
         # Confirmation keys
@@ -218,6 +220,10 @@ class InputHandler:
         elif action == InputAction.SHOW_INVENTORY:
             self.inventory_visible = not self.inventory_visible
             return "SHOW_INVENTORY"
+        
+        # Handle message log
+        elif action == InputAction.SHOW_MESSAGE_LOG:
+            return "SHOW_MESSAGE_LOG"
         
         # Unknown action
         return False
@@ -508,7 +514,7 @@ class InputHandler:
             overflow = inventory.add_resource(resource_type, yield_amount)
             
             # Clear the resource from the map
-            game_map.tiles[player.y][player.x] = '.'
+            game_map.remove_resource(player.x, player.y)
             
             if overflow > 0:
                 actual_gathered = yield_amount - overflow
