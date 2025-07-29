@@ -33,7 +33,7 @@ class DemoHandler:
         if self.async_manager.loading_overlay.active:
             if str(key) == 'C':
                 # Cancel/complete loading demo
-                self.message_pane.add_message("Operation cancelled!", MessageCategory.SYSTEM)
+                self.message_pane.add_message("Operation cancelled!", MessageCategory.GENERAL)
                 self.async_manager.end_operation()
                 self.reset_demo()
                 return True
@@ -119,4 +119,4 @@ class DemoHandler:
         
     def add_help_messages(self) -> None:
         """Add demo help messages to message pane."""
-        self.message_pane.add_message("Demo: L (spinner), P (progress), D (dots), C (cancel)", MessageCategory.SYSTEM)
+        self.message_pane.add_message("Demo: L (spinner), P (progress), D (dots), C (cancel)", MessageCategory.SYSTEM, turn=0)

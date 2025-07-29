@@ -455,8 +455,9 @@ class MessagePane:
         
         # Apply turn filter for performance mode
         if self._show_current_turn_only and not self._viewing_history:
-            # Only show messages from current turn (and system messages)
-            messages = [m for m in messages if m.turn == self._current_turn or m.category == MessageCategory.SYSTEM]
+            # Show messages from current turn AND the previous turn
+            # This ensures messages added during action processing are visible
+            messages = [m for m in messages if m.turn >= self._current_turn - 1]
         
         if self._filter:
             messages = self._filter.apply(messages)

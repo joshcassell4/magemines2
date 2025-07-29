@@ -1,7 +1,7 @@
 """Mage entity factories."""
 
 from typing import Optional, List
-from ..entities import Entity
+from ..entity_system import Entity
 from ..components import (
     Position, Renderable, Name, Stats, Health, AI, 
     MagicUser, Faction, Inventory

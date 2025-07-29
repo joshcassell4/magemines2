@@ -5,7 +5,7 @@ from .input_handler import InputHandler
 from .demo_handler import DemoHandler
 from .game_renderer import GameRenderer
 from .systems import AISystem
-from .entities import create_mage
+from .entities.mages import create_mage
 from ..ui.message_pane import MessagePane, MessageCategory
 from ..ui.header_bar import HeaderBar
 from ..ui.loading_overlay import AsyncOperationManager, LoadingStyle
@@ -89,6 +89,9 @@ def run_game():
             layout.message_height
         )
         
+        # Set message pane for AI system
+        ai_system.set_message_pane(message_pane)
+        
         # Spawn some test mages
         spawn_test_mages(game_map, message_pane)
         
@@ -167,12 +170,12 @@ def run_game():
             # Handle inventory toggle
             if result == "SHOW_INVENTORY":
                 renderer.toggle_inventory()
-                did_full_redraw = True
+                # Don't set did_full_redraw here - let the async_manager handle it
             
             # Handle message log toggle
             if result == "SHOW_MESSAGE_LOG":
                 renderer.toggle_message_log()
-                did_full_redraw = True
+                # Don't set did_full_redraw here - let the async_manager handle it
             
             # Update turn counter if action was taken
             if result and result not in ["SCROLL", "LEVEL_CHANGE", "SHOW_INVENTORY", "SHOW_MESSAGE_LOG"]:
@@ -201,12 +204,12 @@ def add_welcome_messages(message_pane: MessagePane, current_depth: int) -> None:
         message_pane: The message pane to add messages to
         current_depth: The current dungeon depth
     """
-    message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM)
-    message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM)
-    message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather), i (inventory)", MessageCategory.SYSTEM)
-    message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM)
-    message_pane.add_message("Messages: -/+ to scroll, L (view full log)", MessageCategory.SYSTEM)
-    message_pane.add_message(f"You are on level {current_depth}", MessageCategory.INFO)
+    message_pane.add_message("Welcome to MageMines!", MessageCategory.SYSTEM, turn=0)
+    message_pane.add_message("Movement: hjkl (vim-style), yubn (diagonals)", MessageCategory.SYSTEM, turn=0)
+    message_pane.add_message("Commands: . (wait), q (quit), o (open door), g (gather), i (inventory)", MessageCategory.SYSTEM, turn=0)
+    message_pane.add_message("Stairs: < (go up), > (go down)", MessageCategory.SYSTEM, turn=0)
+    message_pane.add_message("Messages: -/+ to scroll, L (view full log)", MessageCategory.SYSTEM, turn=0)
+    message_pane.add_message(f"You are on level {current_depth}", MessageCategory.INFO, turn=0)
 
 
 def spawn_test_mages(game_map, message_pane):
@@ -248,7 +251,8 @@ def spawn_test_mages(game_map, message_pane):
                     
                     message_pane.add_message(
                         f"A {mage_name} appears in the dungeon!",
-                        MessageCategory.INFO
+                        MessageCategory.INFO,
+                        turn=0
                     )
                     
                     logger = logging.getLogger(__name__)
