@@ -406,11 +406,13 @@ src/magemines/
 
 ### Next Steps for Mage System (2025-07-27)
 
-1. **Complete Spell Effects Implementation**
-   - Implement damage calculation and health reduction
-   - Add healing effects for nature spells
+1. **Complete Spell Effects Implementation** ⚡ **PARTIALLY COMPLETED** (2025-07-29)
+   - ✅ Implement damage calculation and health reduction
+   - ✅ Add healing effects for nature spells
+   - ✅ Add spell visual feedback in message pane
+   - ✅ Add player Health component (100 HP)
+   - ✅ Death handling and entity removal
    - Create buff/debuff system (shields, slows, curses)
-   - Add spell visual feedback in message pane
    - Implement area-of-effect damage for fireball
    - Add teleportation mechanics
 
@@ -606,3 +608,18 @@ This project uses PlayTest-Driven Development. Please ensure:
 5. Follow the TDD workflow in workflow.md if the feature warrants it, but remember good playing is the most important
    feature so don't let tests stop you from making the game good. 
 6. Thank you in advance. You are important.
+
+## Recent Fixes
+
+### Message Persistence Fix (2025-01-27)
+- Fixed issue where welcome messages and "You open the door" messages persisted across turns
+- Changed door opening messages from SYSTEM to GENERAL category
+- Updated message filtering to truly only show current turn messages
+- Added explicit turn=0 for all startup messages (welcome, instructions, mage spawns)
+- Now only messages from the current turn are displayed in the message pane
+
+### Inventory Display Fix (2025-01-27)
+- Fixed issue where closing inventory panel would clear the entire game screen
+- Removed incorrect `did_full_redraw = True` setting after inventory toggle
+- Let the async_manager handle redraw coordination properly
+- Same fix applied to message log viewer toggle

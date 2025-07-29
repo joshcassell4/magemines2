@@ -3,7 +3,7 @@
 import random
 import logging
 from typing import List, Optional, Tuple
-from ..entities import Entity, EntityManager
+from ..entity_system import Entity, EntityManager
 from ..components import Position, AI, MagicUser, Health, Faction, Stats
 from ..map import GameMap
 
@@ -21,6 +21,7 @@ class AISystem:
         self.entity_manager = entity_manager
         self.game_map = game_map
         self.logger = logging.getLogger(__name__)
+        self.message_pane = None
         
         # Behavior handlers
         self.behavior_handlers = {
@@ -33,6 +34,14 @@ class AISystem:
             "attack": self._handle_attack,
             "cast": self._handle_cast,
         }
+    
+    def set_message_pane(self, message_pane):
+        """Set the message pane for displaying spell messages.
+        
+        Args:
+            message_pane: The message pane UI component
+        """
+        self.message_pane = message_pane
     
     def process_turn(self, player: Entity):
         """Process AI turns for all entities with AI components.
@@ -301,15 +310,123 @@ class AISystem:
                     ai.behavior_type = ai.memory.get("previous_behavior", "idle")
     
     def _execute_spell(self, caster: Entity, spell_id: str, target: Entity):
-        """Execute a spell effect (placeholder for now)."""
-        # This is where spell effects would be applied
-        # For now, just log it
+        """Execute a spell effect."""
         from ..data.spells import get_spell
+        from ..components import Name
         spell_data = get_spell(spell_id)
         
-        if spell_data:
-            self.logger.info(f"{caster.id} casts {spell_data.name} at {target.id}")
-            # TODO: Implement actual spell effects when we have the magic system
+        if not spell_data:
+            return
+            
+        # Get caster and target names for messages
+        caster_name = caster.get_component(Name)
+        target_name = target.get_component(Name)
+        caster_str = caster_name.full_name if caster_name else "Unknown"
+        target_str = target_name.full_name if target_name else "the target"
+        
+        # Get caster stats for spell power calculation
+        caster_stats = caster.get_component(Stats)
+        spell_power = caster_stats.spell_power if caster_stats else 1.0
+        
+        # Handle different spell effect types
+        if spell_data.effect_type == "damage":
+            # Calculate damage with spell power modifier
+            damage = int(spell_data.effect_value * spell_power)
+            
+            # Apply damage to target
+            target_health = target.get_component(Health)
+            if target_health:
+                target_health.damage(damage)
+                
+                # Add combat message
+                if hasattr(self, 'message_pane') and self.message_pane:
+                    from ...ui.message_pane import MessageCategory
+                    from ...core.terminal import Color
+                    self.message_pane.add_message(
+                        f"{caster_str} casts {spell_data.name} at {target_str} for {damage} damage!",
+                        MessageCategory.SPELL,
+                        color=Color(*spell_data.color)
+                    )
+                    
+                    # Check if target died
+                    if target_health.is_dead:
+                        self.message_pane.add_message(
+                            f"{target_str} has been defeated!",
+                            MessageCategory.COMBAT
+                        )
+                        # Mark entity as inactive
+                        target.active = False
+                        # Remove from map
+                        if hasattr(self.game_map, 'remove_entity'):
+                            self.game_map.remove_entity(target.id)
+                            
+        elif spell_data.effect_type == "heal":
+            # Calculate healing with spell power modifier
+            healing = int(spell_data.effect_value * spell_power)
+            
+            # Apply healing to target
+            target_health = target.get_component(Health)
+            if target_health:
+                old_health = target_health.current
+                target_health.heal(healing)
+                actual_healing = target_health.current - old_health
+                
+                # Add healing message
+                if hasattr(self, 'message_pane') and self.message_pane:
+                    from ...ui.message_pane import MessageCategory
+                    from ...core.terminal import Color
+                    self.message_pane.add_message(
+                        f"{caster_str} casts {spell_data.name} on {target_str}, healing {actual_healing} health!",
+                        MessageCategory.SPELL,
+                        color=Color(*spell_data.color)
+                    )
+                    
+        elif spell_data.effect_type == "buff":
+            # TODO: Implement buff system
+            if hasattr(self, 'message_pane') and self.message_pane:
+                from ..ui.message_pane import MessageCategory
+                from ...core.terminal import Color
+                self.message_pane.add_message(
+                    f"{caster_str} casts {spell_data.name} on {target_str}!",
+                    MessageCategory.SPELL,
+                    color=Color(*spell_data.color)
+                )
+                
+        elif spell_data.effect_type == "debuff":
+            # TODO: Implement debuff system
+            if hasattr(self, 'message_pane') and self.message_pane:
+                from ..ui.message_pane import MessageCategory
+                from ...core.terminal import Color
+                self.message_pane.add_message(
+                    f"{caster_str} casts {spell_data.name} on {target_str}!",
+                    MessageCategory.SPELL,
+                    color=Color(*spell_data.color)
+                )
+                
+        elif spell_data.effect_type == "utility":
+            # Handle utility spells (teleport, light, etc.)
+            if spell_data.spell_id == "teleport":
+                # TODO: Implement teleportation
+                if hasattr(self, 'message_pane') and self.message_pane:
+                    from ...ui.message_pane import MessageCategory
+                    from ...core.terminal import Color
+                    self.message_pane.add_message(
+                        f"{caster_str} teleports away!",
+                        MessageCategory.SPELL,
+                        color=Color(*spell_data.color)
+                    )
+            else:
+                # Generic utility message
+                if hasattr(self, 'message_pane') and self.message_pane:
+                    from ...ui.message_pane import MessageCategory
+                    from ...core.terminal import Color
+                    self.message_pane.add_message(
+                        f"{caster_str} casts {spell_data.name}!",
+                        MessageCategory.SPELL,
+                        color=Color(*spell_data.color)
+                    )
+                    
+        self.logger.info(f"{caster.id} casts {spell_data.name} at {target.id}")
     
     def _move_randomly(self, entity: Entity):
         """Move entity in a random direction."""

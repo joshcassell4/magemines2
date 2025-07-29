@@ -3,7 +3,7 @@
 import logging
 from typing import Optional, Dict, Tuple, Set
 from .map import GameMap
-from .entities import Entity
+from .entity_system import Entity
 from .components import Position
 from ..core.performance import DirtyRegionTracker, BatchRenderer, BufferedChar
 from ..core.terminal import Color

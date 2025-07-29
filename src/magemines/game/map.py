@@ -1,10 +1,10 @@
 import logging
 from typing import Optional, List, Dict, Tuple
-from magemines.ui.colors import ColorPalette
+from ..ui.colors import ColorPalette
 from .map_generation import MapGenerator, DungeonGenerator, MapGeneratorConfig, TileType
 from .level_manager import LevelManager
 from .dungeon_level import DungeonLevel
-from .entities import Entity, EntityManager
+from .entity_system import Entity, EntityManager
 from .components import Position
 from ..core.config import get_config, ConfigSection
 

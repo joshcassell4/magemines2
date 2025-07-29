@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "PERFORMANCE.md",
+                "file": "docs/CONFIGURATION.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "PERFORMANCE"
+              "title": "CONFIGURATION"
             }
           }
         ]
@@ -170,25 +170,35 @@
   },
   "active": "b2ebecd391d77fa4",
   "lastOpenFiles": [
-    "src/magemines/game/optimized_map.py",
-    "src/magemines/ui/message_log_viewer.py",
-    "src/magemines/core/performance.py",
-    "docs/CONFIGURATION.md",
-    "PERFORMANCE.md",
+    "deletefile.txt",
+    "docs/workflow.md",
+    "docs/playtest.md",
+    "docs/cleanup_report.md",
+    "docs/REVIEW1.md",
+    "docs/PRD.md",
+    "docs/PERFORMANCE.md",
+    "docs/CONFIG_IMPLEMENTATION_SUMMARY.md",
+    "workflow.md",
     "playtest.md",
-    "src/magemines/game/systems/__init__.py",
-    "src/magemines/game/systems/ai_system.py",
-    "src/magemines/game/systems",
-    "src/magemines/game/data/__init__.py",
-    "src/magemines/game/entities/__init__.py",
-    "src/magemines/game/entities/mages.py",
-    "src/magemines/game/entities",
-    "src/magemines/game/data/spells.py",
-    "CONFIG_IMPLEMENTATION_SUMMARY.md",
-    "Untitled.canvas",
     "cleanup_report.md",
+    "REVIEW1.md",
+    "PRD.md",
+    "PERFORMANCE.md",
+    "CONFIG_IMPLEMENTATION_SUMMARY.md",
+    "logs/magemines_20250728_230110.log",
+    "logs/magemines_20250728_225816.log",
+    "docs/SPELLS_SUGGESTIONS.md",
+    "logs/magemines_20250728_225252.log",
+    "test_spell_effects.py",
+    "logs/magemines_20250728_224359.log",
+    "nul",
+    "src/magemines/ui/message_log_viewer.py",
+    "logs/magemines_20250727_213738.log",
+    "test_gather.py",
+    "logs/magemines_20250727_212934.log",
+    "docs/CONFIGURATION.md",
+    "Untitled.canvas",
     "feature_status.md",
-    "CLAUDE.md",
-    "REVIEW1.md"
+    "CLAUDE.md"
   ]
 }

@@ -28,6 +28,10 @@ class Color:
     def to_hex(self) -> str:
         """Convert to hex color string."""
         return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
+    
+    def to_rgb(self) -> tuple[int, int, int]:
+        """Convert to RGB tuple."""
+        return (self.r, self.g, self.b)
         
     def __eq__(self, other: object) -> bool:
         """Compare colors for equality."""

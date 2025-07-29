@@ -160,7 +160,7 @@ class InputHandler:
             self.awaiting_confirmation = False
             self.confirmation_action = None
             if self._message_pane:
-                self._message_pane.add_message("Quit cancelled.", MessageCategory.SYSTEM)
+                self._message_pane.add_message("Quit cancelled.", MessageCategory.GENERAL)
             return True
         
         # Block other actions during confirmation
@@ -416,12 +416,12 @@ class InputHandler:
             if len(doors_found) == 1:
                 self._message_pane.add_message(
                     "You open the door.",
-                    MessageCategory.SYSTEM
+                    MessageCategory.GENERAL
                 )
             else:
                 self._message_pane.add_message(
                     f"You open {len(doors_found)} doors.",
-                    MessageCategory.SYSTEM
+                    MessageCategory.GENERAL
                 )
         
         return True

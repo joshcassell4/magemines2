@@ -1,7 +1,7 @@
 """Player entity for the game."""
 
-from .entities import Entity
-from .components import Position, Renderable, Inventory, Gatherer, Name, Stats
+from .entity_system import Entity
+from .components import Position, Renderable, Inventory, Gatherer, Name, Stats, Health
 
 
 class Player(Entity):
@@ -24,6 +24,7 @@ class Player(Entity):
         self.add_component(Gatherer(skill_level=1))
         self.add_component(Name("Player"))
         self.add_component(Stats())
+        self.add_component(Health(current=100, maximum=100))  # Player starts with 100 health
         
     # Convenience properties for backwards compatibility
     @property
